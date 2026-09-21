@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 520" role="img" aria-label="Ilustração botânica de lírio rosa">
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M208 500 C210 402 224 310 228 224" stroke="#70835d" stroke-width="8"/>
+    <path d="M220 405 C165 368 111 359 63 380" stroke="#70835d" stroke-width="7"/>
+    <path d="M219 350 C274 305 330 300 382 319" stroke="#70835d" stroke-width="7"/>
+    <path d="M223 289 C176 253 136 237 91 248" stroke="#70835d" stroke-width="7"/>
+  </g>
+  <g fill="#829866" opacity=".95">
+    <path d="M208 414 C151 383 105 378 58 389 C97 421 150 435 211 423Z"/>
+    <path d="M224 358 C279 321 325 315 377 327 C347 362 292 375 226 369Z"/>
+    <path d="M224 293 C182 262 142 251 97 257 C130 288 174 302 225 304Z"/>
+  </g>
+  <g fill="#e8a6b9" stroke="#a95770" stroke-width="3">
+    <path d="M220 236 C176 207 137 150 149 107 C188 117 217 154 227 207 C234 163 261 119 301 108 C314 148 279 203 235 232 C274 218 326 220 350 250 C321 282 266 265 232 241 C253 282 252 327 224 352 C195 320 194 273 217 239 C172 259 116 253 84 222 C106 187 170 192 219 229Z"/>
+    <path d="M231 228 C213 178 218 119 248 78 C278 110 274 170 239 227Z"/>
+  </g>
+  <g fill="#9a5268" opacity=".6">
+    <circle cx="175" cy="155" r="4"/><circle cx="187" cy="170" r="3"/><circle cx="285" cy="156" r="4"/><circle cx="269" cy="174" r="3"/><circle cx="142" cy="221" r="3"/><circle cx="301" cy="233" r="3"/>
+  </g>
+  <g stroke="#9a5268" stroke-width="3">
+    <path d="M220 228 L188 135"/><path d="M227 230 L249 123"/><path d="M229 232 L286 146"/>
+  </g>
+  <g fill="#c17a8d">
+    <ellipse cx="187" cy="133" rx="5" ry="9" transform="rotate(-18 187 133)"/>
+    <ellipse cx="249" cy="121" rx="5" ry="9" transform="rotate(17 249 121)"/>
+    <ellipse cx="287" cy="145" rx="5" ry="9" transform="rotate(45 287 145)"/>
+  </g>
+</svg>

@@ -17,7 +17,7 @@ function NavLinks({ mobile=false }: { mobile?: boolean }) {
 
 export default function AppNav() {
   return <>
-    <aside className="sidebar"><div className="brand">Meu Look ♡</div><nav className="nav-stack"><NavLinks /></nav></aside>
+    <aside className="sidebar"><div className="brand brand-with-lily"><img src="/pink-lily.svg" alt="" className="brand-lily" aria-hidden="true"/><span>Meu Look ♡</span></div><nav className="nav-stack"><NavLinks /></nav></aside>
     <nav className="mobile-nav"><NavLinks mobile /></nav>
   </>;
 }

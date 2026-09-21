@@ -16,9 +16,17 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Avoid calling createUser for an already existing email. In some Node/Windows
-  // combinations, handling the duplicate-user error can leave the HTTP client
-  // closing while the process exits, which can trigger a libuv assertion.
+  const { data: created, error } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { name: 'Rian', role: 'admin' },
+  });
+
+  if (error && !error.message.toLowerCase().includes('already registered')) {
+    throw error;
+  }
+
   const { data: list, error: listError } = await supabase.auth.admin.listUsers({
     page: 1,
     perPage: 100,
@@ -26,22 +34,11 @@ async function main() {
 
   if (listError) throw listError;
 
-  let adminUser =
-    list.users.find((u) => u.email?.toLowerCase() === email.toLowerCase()) ?? null;
+  const adminUser =
+    list.users.find((u) => u.email?.toLowerCase() === email.toLowerCase()) ??
+    created.user;
 
-  if (!adminUser) {
-    const { data: created, error: createError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { name: 'Rian', role: 'admin' },
-    });
-
-    if (createError) throw createError;
-    adminUser = created.user;
-  } else {
-    console.log('Usuário administrador já existe; atualizando a senha e o perfil.');
-  }
+  if (!adminUser) throw new Error('Admin user não encontrado.');
 
   const { error: updateError } = await supabase.auth.admin.updateUserById(
     adminUser.id,
@@ -63,8 +60,7 @@ async function main() {
   console.log('Admin bootstrap concluído.');
 }
 
-main()
-  .catch((error) => {
-    console.error(error instanceof Error ? error.message : error);
-    process.exitCode = 1;
-  });
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+});

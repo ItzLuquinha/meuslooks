@@ -102,3 +102,6 @@ O repositório deve ser validado novamente depois da instalação das dependênc
 ## Migração do schema
 
 A revisão adiciona `clothing_categories.is_active` e novas políticas RLS para categorias. Execute o `supabase/schema.sql` completo no banco antes de usar a área administrativa de categorias.
+
+### Detalhe floral
+A decoração de lírios rosa foi desenhada localmente em SVG em uma direção botânica/aquarela inspirada em uma referência de lírio rosa pesquisada online. O arquivo local evita depender de hotlink externo e mantém o detalhe leve para o aplicativo.
