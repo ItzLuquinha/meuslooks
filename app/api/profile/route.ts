@@ -1,0 +1,5 @@
+import { NextResponse } from 'next/server';
+import { getCurrentContext } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
+export async function GET(){const c=await getCurrentContext();if(c.kind!=='user'||!c.userId)return NextResponse.json({error:'Não autenticado.'},{status:401});const s=await createClient();const {data}=await s.from('profiles').select('id,name,email,created_at').eq('id',c.userId).single();return NextResponse.json({profile:data});}
+export async function PATCH(req:Request){const c=await getCurrentContext();if(c.kind!=='user'||!c.userId)return NextResponse.json({error:'Não autenticado.'},{status:401});const b=await req.json().catch(()=>({}));if(typeof b.name!=='string'||b.name.trim().length<1)return NextResponse.json({error:'Nome inválido.'},{status:400});const s=await createClient();const {error}=await s.from('profiles').update({name:b.name.trim()}).eq('id',c.userId);if(error)return NextResponse.json({error:error.message},{status:400});return NextResponse.json({ok:true});}

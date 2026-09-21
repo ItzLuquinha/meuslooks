@@ -1,0 +1,4 @@
+import { NextResponse } from 'next/server';
+import { getCurrentContext } from '@/lib/auth';
+import { createAdminClient } from '@/lib/supabase/admin';
+export async function GET(){const c=await getCurrentContext();if(c.kind!=='user'||!c.userId)return NextResponse.json({error:'Não autenticado.'},{status:401});const admin=createAdminClient();const [{data:items},{data:outfits}]=await Promise.all([admin.from('clothing_items').select('*,clothing_categories(id,name)').eq('user_id',c.userId).eq('is_favorite',true).order('created_at',{ascending:false}),admin.from('outfits').select('id,name,occasion,notes,is_favorite,is_day_look,created_at,outfit_items(clothing_item_id,clothing_items(id,name,image_path,category_id,clothing_categories(id,name)))').eq('user_id',c.userId).eq('is_favorite',true).order('created_at',{ascending:false})]);return NextResponse.json({items:items||[],outfits:outfits||[]});}

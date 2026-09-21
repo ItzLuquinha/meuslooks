@@ -1,0 +1,146 @@
+create extension if not exists pgcrypto;
+
+create type public.user_role as enum ('admin','user');
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  name text not null,
+  email text not null unique,
+  role public.user_role not null default 'user',
+  is_blocked boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.private_credentials (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  encrypted_password text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.clothing_categories (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.profiles(id) on delete cascade,
+  name text not null,
+  created_at timestamptz not null default now(),
+  is_active boolean not null default true,
+  unique(user_id,name)
+);
+
+create table if not exists public.clothing_items (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  name text not null,
+  category_id uuid references public.clothing_categories(id) on delete set null,
+  subcategory text,
+  color text,
+  size text,
+  brand text,
+  occasion text,
+  season text,
+  notes text,
+  image_path text,
+  is_favorite boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.outfits (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  name text not null,
+  occasion text,
+  notes text,
+  is_favorite boolean not null default false,
+  is_day_look boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.outfit_items (
+  outfit_id uuid not null references public.outfits(id) on delete cascade,
+  clothing_item_id uuid not null references public.clothing_items(id) on delete cascade,
+  primary key(outfit_id,clothing_item_id)
+);
+
+create table if not exists public.favorites (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  clothing_item_id uuid references public.clothing_items(id) on delete cascade,
+  outfit_id uuid references public.outfits(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  check ((clothing_item_id is not null) <> (outfit_id is not null))
+);
+
+create table if not exists public.admin_messages (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  body text not null,
+  active boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.clothing_categories add column if not exists is_active boolean not null default true;
+
+create index if not exists clothing_items_user_id_idx on public.clothing_items(user_id);
+create index if not exists outfits_user_id_idx on public.outfits(user_id);
+create index if not exists outfit_items_outfit_idx on public.outfit_items(outfit_id);
+create index if not exists outfit_items_item_idx on public.outfit_items(clothing_item_id);
+create unique index if not exists active_admin_message_unique on public.admin_messages((active)) where active=true;
+
+alter table public.profiles enable row level security;
+alter table public.private_credentials enable row level security;
+alter table public.clothing_categories enable row level security;
+alter table public.clothing_items enable row level security;
+alter table public.outfits enable row level security;
+alter table public.outfit_items enable row level security;
+alter table public.favorites enable row level security;
+alter table public.admin_messages enable row level security;
+
+drop policy if exists profiles_self_select on public.profiles;
+create policy profiles_self_select on public.profiles for select to authenticated using (id=auth.uid());
+drop policy if exists profiles_self_update on public.profiles;
+create policy profiles_self_update on public.profiles for update to authenticated using (id=auth.uid() and role='user' and is_blocked=false) with check (id=auth.uid() and role='user' and is_blocked=false);
+
+drop policy if exists categories_own on public.clothing_categories;
+drop policy if exists categories_select on public.clothing_categories;
+drop policy if exists categories_insert on public.clothing_categories;
+drop policy if exists categories_update on public.clothing_categories;
+drop policy if exists categories_delete on public.clothing_categories;
+create policy categories_select on public.clothing_categories for select to authenticated using ((user_id is null or user_id=auth.uid()) and is_active=true);
+create policy categories_insert on public.clothing_categories for insert to authenticated with check (user_id=auth.uid());
+create policy categories_update on public.clothing_categories for update to authenticated using (user_id=auth.uid()) with check (user_id=auth.uid());
+create policy categories_delete on public.clothing_categories for delete to authenticated using (user_id=auth.uid());
+
+drop policy if exists clothes_own on public.clothing_items;
+create policy clothes_own on public.clothing_items for all to authenticated using (user_id=auth.uid()) with check (user_id=auth.uid());
+
+drop policy if exists outfits_own on public.outfits;
+create policy outfits_own on public.outfits for all to authenticated using (user_id=auth.uid()) with check (user_id=auth.uid());
+
+drop policy if exists outfit_items_own on public.outfit_items;
+create policy outfit_items_own on public.outfit_items for all to authenticated using (exists(select 1 from public.outfits o where o.id=outfit_id and o.user_id=auth.uid())) with check (exists(select 1 from public.outfits o where o.id=outfit_id and o.user_id=auth.uid()));
+
+drop policy if exists favorites_own on public.favorites;
+create policy favorites_own on public.favorites for all to authenticated using (user_id=auth.uid()) with check (user_id=auth.uid());
+
+drop policy if exists messages_auth_read on public.admin_messages;
+create policy messages_auth_read on public.admin_messages for select to authenticated using (active=true);
+
+-- private_credentials intentionally has no authenticated policy. Server-side admin operations use the service role.
+
+insert into public.clothing_categories (user_id,name) values
+(null,'Camisetas'),(null,'Blusas'),(null,'Camisas'),(null,'Croppeds'),(null,'Vestidos'),(null,'Saias'),(null,'Shorts'),(null,'Calças'),(null,'Jeans'),(null,'Casacos'),(null,'Jaquetas'),(null,'Moletons'),(null,'Pijamas'),(null,'Roupas íntimas'),(null,'Lingerie'),(null,'Sutiãs'),(null,'Calcinhas'),(null,'Meias'),(null,'Sapatos'),(null,'Tênis'),(null,'Sandálias'),(null,'Botas'),(null,'Bolsas'),(null,'Acessórios'),(null,'Outros')
+on conflict do nothing;
+
+insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types)
+values ('clothing','clothing',false,8388608,array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update set public=false,file_size_limit=8388608,allowed_mime_types=array['image/jpeg','image/png','image/webp'];
+
+-- Direct browser storage access is scoped by the first path segment, which is the auth user id.
+drop policy if exists clothing_select_own on storage.objects;
+create policy clothing_select_own on storage.objects for select to authenticated using (bucket_id='clothing' and (storage.foldername(name))[1]=auth.uid()::text);
+drop policy if exists clothing_insert_own on storage.objects;
+create policy clothing_insert_own on storage.objects for insert to authenticated with check (bucket_id='clothing' and (storage.foldername(name))[1]=auth.uid()::text);
+drop policy if exists clothing_update_own on storage.objects;
+create policy clothing_update_own on storage.objects for update to authenticated using (bucket_id='clothing' and (storage.foldername(name))[1]=auth.uid()::text) with check (bucket_id='clothing' and (storage.foldername(name))[1]=auth.uid()::text);
+drop policy if exists clothing_delete_own on storage.objects;
+create policy clothing_delete_own on storage.objects for delete to authenticated using (bucket_id='clothing' and (storage.foldername(name))[1]=auth.uid()::text);
