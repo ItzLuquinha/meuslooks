@@ -26,16 +26,16 @@ export async function GET() {
     counts.set(row.clothing_item_id, (counts.get(row.clothing_item_id) || 0) + 1);
     if (!lastUsed.has(row.clothing_item_id)) lastUsed.set(row.clothing_item_id, row.worn_on);
   }
-  const usageByItem = clothing.map((item: any) => ({ id: item.id, name: item.name, image_path: item.image_path, category: item.clothing_categories?.name || 'Sem categoria', count: counts.get(item.id) || 0, last_used: lastUsed.get(item.id) || null })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const usageByItem = clothing.map((item: any) => ({ id: item.id, name: item.name, image_path: item.image_path, category: item.clothing_categories?.[0]?.name || 'Sem categoria', count: counts.get(item.id) || 0, last_used: lastUsed.get(item.id) || null })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   const neverUsed = usageByItem.filter((item) => item.count === 0);
   const categoryCounts = new Map<string, number>();
-  for (const item of clothing) { const category = item.clothing_categories?.name || 'Sem categoria'; categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1); }
+  for (const item of clothing) { const category = item.clothing_categories?.[0]?.name || 'Sem categoria'; categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1); }
   const categories = [...categoryCounts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   return NextResponse.json({
     totals: { clothing: clothingResult.count || 0, outfits: outfitsResult.count || 0, favorite_clothing: favoritesItemsResult.count || 0, favorite_outfits: favoritesOutfitsResult.count || 0, wears: wearsResult.count || 0, never_used: neverUsed.length },
     most_used: usageByItem.slice(0, 6),
     never_used: neverUsed.slice(0, 12),
     categories: categories.slice(0, 8),
-    recent_wears: wears.slice(0, 8).map((wear: any) => ({ id: wear.id, worn_on: wear.worn_on, outfit_name: wear.outfits?.name || 'Look' }))
+    recent_wears: wears.slice(0, 8).map((wear: any) => ({ id: wear.id, worn_on: wear.worn_on, outfit_name: wear.outfits?.[0]?.name || 'Look' }))
   });
 }
