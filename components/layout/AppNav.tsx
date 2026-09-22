@@ -1,12 +1,14 @@
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Camera, Heart, Home, Settings, Shirt } from 'lucide-react';
+import { BarChart3, CalendarDays, Camera, Heart, Home, Settings, Shirt } from 'lucide-react';
 
 const items = [
   ['/inicio','Início',Home],
   ['/guarda-roupa','Meu Guarda-Roupa',Shirt],
   ['/favoritos','Favoritos',Heart],
+  ['/calendario','Calendário',CalendarDays],
+  ['/estatisticas','Estatísticas',BarChart3],
   ['/camera','Câmera',Camera],
   ['/configuracoes','Configurações',Settings],
 ] as const;

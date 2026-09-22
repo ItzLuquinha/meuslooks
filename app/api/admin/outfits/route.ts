@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 function uniqueIds(value: unknown) {
   if (!Array.isArray(value)) return [] as string[];
-  return [...new Set(value.map((id) => String(id)).filter(Boolean))].slice(0, 7);
+  return [...new Set(value.map((id) => String(id)).filter(Boolean))].slice(0, 12);
 }
 
 export async function GET() {

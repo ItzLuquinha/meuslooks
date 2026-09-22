@@ -14,11 +14,20 @@ export async function GET() {
   const context = await currentUser();
   if (!context) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
   const admin = createAdminClient();
-  const [{ data: items }, { data: categories }] = await Promise.all([
+  const [{ data: items }, { data: categories }, { data: usage }] = await Promise.all([
     admin.from('clothing_items').select('*,clothing_categories(id,name,is_active)').eq('user_id', context.userId).order('created_at', { ascending: false }),
     admin.from('clothing_categories').select('id,name').or(`user_id.is.null,user_id.eq.${context.userId}`).eq('is_active', true).order('name'),
+    admin.from('wardrobe_usage').select('clothing_item_id,worn_on').eq('user_id', context.userId).order('worn_on', { ascending: false }),
   ]);
-  return NextResponse.json({ items: items || [], categories: categories || [] });
+  const usageMap = new Map<string, { count: number; last_used: string | null }>();
+  for (const row of usage || []) {
+    const current = usageMap.get(row.clothing_item_id) || { count: 0, last_used: null };
+    current.count += 1;
+    if (!current.last_used) current.last_used = row.worn_on;
+    usageMap.set(row.clothing_item_id, current);
+  }
+  const enriched = (items || []).map((item: any) => ({ ...item, usage_count: usageMap.get(item.id)?.count || 0, last_used: usageMap.get(item.id)?.last_used || null }));
+  return NextResponse.json({ items: enriched, categories: categories || [] });
 }
 
 export async function POST(req: Request) {
@@ -52,7 +61,7 @@ export async function POST(req: Request) {
     season: String(form.get('season') || '').trim() || null,
     notes: String(form.get('notes') || '').trim() || null,
     image_path: path,
-    is_favorite: form.get('favorite') === 'on',
+    is_favorite: ['on', 'true', '1'].includes(String(form.get('favorite') || '').toLowerCase()),
   }).select('*,clothing_categories(id,name,is_active)').single();
   if (error) {
     await admin.storage.from('clothing').remove([path]);

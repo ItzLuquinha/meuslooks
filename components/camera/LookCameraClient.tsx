@@ -132,13 +132,127 @@ export default function LookCameraClient() {
   async function sendPhoto() {
     setSending(true); setError('');
     try {
-      const file = await exportEditedFile(); const form = new FormData(); form.append('image', file); form.append('filter', filter); form.append('adjustments', JSON.stringify(adjustments));
-      const response = await fetch('/api/photo-email', { method: 'POST', body: form }); const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || 'Não foi possível enviar a foto.');
+      const file = await exportEditedFile();
+      await submitPhotoThroughFormSubmit(file, {
+        filter,
+        adjustments,
+        name: 'Minha namorada',
+      });
       setSent(true); setShowEditor(false); setCapturedFile(null); cleanupPreview();
-    } catch (sendError) { setError(sendError instanceof Error ? sendError.message : 'Não foi possível enviar a foto.'); }
-    finally { setSending(false); }
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : 'Não foi possível enviar a foto.');
+    } finally {
+      setSending(false);
+    }
   }
+
+async function submitPhotoThroughFormSubmit(
+  file: File,
+  metadata: { filter: FilterName; adjustments: Adjustments; name: string },
+) {
+  const recipient = 'rianbraga718@gmail.com';
+  const returnUrl = `${window.location.origin}/camera?photo_sent=1`;
+  const iframeName = `formsubmit-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const iframe = document.createElement('iframe');
+  iframe.name = iframeName;
+  iframe.title = 'Envio da foto';
+  iframe.style.position = 'fixed';
+  iframe.style.width = '1px';
+  iframe.style.height = '1px';
+  iframe.style.border = '0';
+  iframe.style.opacity = '0';
+  iframe.style.pointerEvents = 'none';
+  iframe.style.left = '-9999px';
+  document.body.appendChild(iframe);
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `https://formsubmit.co/${encodeURIComponent(recipient)}`;
+  form.enctype = 'multipart/form-data';
+  form.target = iframeName;
+  form.style.display = 'none';
+
+  const appendField = (name: string, value: string) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  };
+
+  appendField('_subject', 'Novo look — Meu Look');
+  appendField('_template', 'table');
+  appendField('_captcha', 'false');
+  appendField('_honey', '');
+  appendField('_url', window.location.href);
+  appendField('_next', returnUrl);
+  appendField('nome', metadata.name);
+  appendField('filtro', metadata.filter);
+  appendField('ajustes', JSON.stringify(metadata.adjustments));
+  appendField('mensagem', 'Uma nova foto do look foi enviada pelo Meu Look.');
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.name = 'attachment';
+  fileInput.accept = 'image/jpeg,image/png,image/webp';
+  fileInput.style.display = 'none';
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  fileInput.files = transfer.files;
+  form.appendChild(fileInput);
+
+  document.body.appendChild(form);
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      let submitted = false;
+      let finished = false;
+      const timeout = window.setTimeout(() => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        reject(new Error('Não foi possível confirmar o envio da foto. Verifique sua conexão e tente novamente.'));
+      }, 30000);
+
+      const cleanup = () => {
+        window.clearTimeout(timeout);
+        iframe.removeEventListener('load', handleLoad);
+        iframe.removeEventListener('error', handleError);
+        form.remove();
+        window.setTimeout(() => iframe.remove(), 100);
+      };
+
+      const finish = (error?: Error) => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        if (error) reject(error);
+        else resolve();
+      };
+
+      const handleLoad = () => {
+        if (!submitted || finished) return;
+        try {
+          const loadedUrl = iframe.contentWindow?.location.href || '';
+          if (loadedUrl.startsWith(returnUrl)) {
+            finish();
+          }
+        } catch {
+        }
+      };
+
+      const handleError = () => finish(new Error('Não foi possível enviar a foto. Verifique sua conexão e tente novamente.'));
+      iframe.addEventListener('load', handleLoad);
+      iframe.addEventListener('error', handleError);
+      submitted = true;
+      form.submit();
+    });
+  } finally {
+    form.remove();
+    iframe.remove();
+  }
+}
+
 
   return <>
     <PageHeader />

@@ -46,8 +46,8 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const admin = createAdminClient();
   const { data: item } = await admin.from('clothing_items').select('image_path').eq('id', id).eq('user_id', user.id).maybeSingle();
   if (!item) return NextResponse.json({ error: 'Peça não encontrada.' }, { status: 404 });
-  if (item.image_path) await admin.storage.from('clothing').remove([item.image_path]);
   const { error } = await admin.from('clothing_items').delete().eq('id', id).eq('user_id', user.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (item.image_path) await admin.storage.from('clothing').remove([item.image_path]);
   return NextResponse.json({ ok: true });
 }

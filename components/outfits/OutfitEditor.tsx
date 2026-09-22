@@ -47,7 +47,7 @@ export default function OutfitEditor({ initial, items, onSave, onCancel, saving 
   const grouped = useMemo(() => GROUPS.map((group) => ({ ...group, items: items.filter((item) => groupFor(item) === group.key) })).filter((group) => group.items.length), [items]);
 
   function toggle(id: string) {
-    setSelected((current) => current.includes(id) ? current.filter((value) => value !== id) : current.length >= 7 ? current : [...current, id]);
+    setSelected((current) => current.includes(id) ? current.filter((value) => value !== id) : current.length >= 12 ? current : [...current, id]);
   }
 
   const selectedItems = items.filter((item) => selected.includes(item.id));
@@ -61,7 +61,7 @@ export default function OutfitEditor({ initial, items, onSave, onCancel, saving 
       </div>
 
       <div className="section compact-section">
-        <div className="section-head"><div><h3 className="section-title">Peças escolhidas</h3><p className="page-subtitle">{selected.length}/7 peças selecionadas.</p></div></div>
+        <div className="section-head"><div><h3 className="section-title">Peças escolhidas</h3><p className="page-subtitle">{selected.length}/12 peças selecionadas.</p></div></div>
         {selectedItems.length ? <div className="grid outfit-selected-grid">{selectedItems.map((item) => <article className="card clothing-card" key={item.id}><div className="clothing-image">{item.image_path ? <img src={`/api/media?path=${encodeURIComponent(item.image_path)}`} alt={item.name} /> : <div className="placeholder-art"><Shirt/></div>}</div><div className="clothing-info"><div className="clothing-name">{item.name}</div><div className="clothing-meta">{item.clothing_categories?.name || 'Sem categoria'}</div></div></article>)}</div> : <div className="empty">Nenhuma peça selecionada ainda.</div>}
       </div>
 

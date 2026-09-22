@@ -1,19 +1,11 @@
 # Envio de fotos por e-mail
 
-O Meu Look usa o FormSubmit para encaminhar a foto editada para `rianbraga718@gmail.com`. Não é necessário criar conta no FormSubmit, configurar SMTP, guardar senha de e-mail ou usar uma API key no projeto.
+O Meu Look usa o FormSubmit para encaminhar a foto editada para `rianbraga718@gmail.com` sem SMTP, senha de e-mail, API key ou conta de e-mail configurada no projeto.
 
-## Primeira ativação
+O envio da câmera usa um formulário HTML `multipart/form-data` nativo dentro de um iframe oculto. Isso é importante porque o fluxo documentado pelo FormSubmit para anexos é o formulário HTML normal; o endpoint AJAX documentado é voltado a dados JSON.
 
-Na primeira foto enviada, o FormSubmit manda uma mensagem de confirmação para o endereço de destino. É uma ativação única do endpoint; depois de confirmada, os próximos envios são encaminhados normalmente. O FormSubmit documenta que não exige registro, mas exige essa confirmação inicial do endereço.
+Na primeira utilização, o FormSubmit pode pedir uma confirmação única do endereço de destino. Depois da ativação, os envios podem seguir normalmente.
 
-## Configuração
+A foto final é redimensionada/comprimida no navegador antes do envio e o projeto limita o arquivo final para permanecer abaixo de 3,8 MB. O FormSubmit documenta limite de até 10 MB para a soma dos anexos.
 
-`.env.local` pode conter apenas:
-
-```env
-PHOTO_EMAIL_TO=rianbraga718@gmail.com
-```
-
-O envio é feito server-side pela rota `/api/photo-email`, que valida a sessão da usuária, o tipo e o tamanho da imagem antes de encaminhá-la. A foto editada é enviada como anexo.
-
-O projeto não usa mais Nodemailer, SMTP, senha de app ou credenciais do Gmail.
+Não coloque senha do Gmail, senha de app, SMTP ou secret de e-mail no projeto.
