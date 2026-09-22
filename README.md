@@ -105,3 +105,8 @@ A revisão adiciona `clothing_categories.is_active` e novas políticas RLS para 
 
 ### Detalhe floral
 A decoração de lírios rosa foi desenhada localmente em SVG em uma direção botânica/aquarela inspirada em uma referência de lírio rosa pesquisada online. O arquivo local evita depender de hotlink externo e mantém o detalhe leve para o aplicativo.
+
+
+## Câmera e e-mail
+
+A aba de câmera permite capturar e editar fotos antes do envio. O e-mail é encaminhado pelo FormSubmit, sem SMTP ou senha de e-mail. A primeira utilização exige a confirmação única do endereço destinatário pelo próprio FormSubmit.

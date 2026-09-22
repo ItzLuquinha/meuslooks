@@ -1,28 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 520" role="img" aria-label="Ilustração botânica de lírio rosa">
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M208 500 C210 402 224 310 228 224" stroke="#70835d" stroke-width="8"/>
-    <path d="M220 405 C165 368 111 359 63 380" stroke="#70835d" stroke-width="7"/>
-    <path d="M219 350 C274 305 330 300 382 319" stroke="#70835d" stroke-width="7"/>
-    <path d="M223 289 C176 253 136 237 91 248" stroke="#70835d" stroke-width="7"/>
-  </g>
-  <g fill="#829866" opacity=".95">
-    <path d="M208 414 C151 383 105 378 58 389 C97 421 150 435 211 423Z"/>
-    <path d="M224 358 C279 321 325 315 377 327 C347 362 292 375 226 369Z"/>
-    <path d="M224 293 C182 262 142 251 97 257 C130 288 174 302 225 304Z"/>
-  </g>
-  <g fill="#e8a6b9" stroke="#a95770" stroke-width="3">
-    <path d="M220 236 C176 207 137 150 149 107 C188 117 217 154 227 207 C234 163 261 119 301 108 C314 148 279 203 235 232 C274 218 326 220 350 250 C321 282 266 265 232 241 C253 282 252 327 224 352 C195 320 194 273 217 239 C172 259 116 253 84 222 C106 187 170 192 219 229Z"/>
-    <path d="M231 228 C213 178 218 119 248 78 C278 110 274 170 239 227Z"/>
-  </g>
-  <g fill="#9a5268" opacity=".6">
-    <circle cx="175" cy="155" r="4"/><circle cx="187" cy="170" r="3"/><circle cx="285" cy="156" r="4"/><circle cx="269" cy="174" r="3"/><circle cx="142" cy="221" r="3"/><circle cx="301" cy="233" r="3"/>
-  </g>
-  <g stroke="#9a5268" stroke-width="3">
-    <path d="M220 228 L188 135"/><path d="M227 230 L249 123"/><path d="M229 232 L286 146"/>
-  </g>
-  <g fill="#c17a8d">
-    <ellipse cx="187" cy="133" rx="5" ry="9" transform="rotate(-18 187 133)"/>
-    <ellipse cx="249" cy="121" rx="5" ry="9" transform="rotate(17 249 121)"/>
-    <ellipse cx="287" cy="145" rx="5" ry="9" transform="rotate(45 287 145)"/>
+<svg width="420" height="700" viewBox="0 0 420 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M203 696C205 604 194 530 211 456C226 391 225 330 212 267" stroke="#5E745D" stroke-width="7"/>
+    <path d="M205 540C161 511 127 482 101 438" stroke="#5E745D" stroke-width="5"/>
+    <path d="M208 466C255 443 285 409 303 364" stroke="#5E745D" stroke-width="5"/>
+    <path d="M211 330C170 307 149 281 137 246" stroke="#5E745D" stroke-width="5"/>
+    <path d="M115 445C75 438 48 415 27 385C66 383 105 398 123 424C128 432 126 440 115 445Z" fill="#71866D" stroke="#4F674F" stroke-width="3"/>
+    <path d="M278 409C317 402 350 379 374 347C335 347 302 359 282 383C277 390 273 400 278 409Z" fill="#71866D" stroke="#4F674F" stroke-width="3"/>
+    <path d="M143 288C109 283 83 262 65 234C99 232 126 244 146 267C151 274 151 282 143 288Z" fill="#78906F" stroke="#526A51" stroke-width="3"/>
+    <path d="M209 268C205 217 201 175 207 132" stroke="#526A51" stroke-width="5"/>
+
+    <g transform="translate(0 -14)">
+      <path d="M210 132C183 97 143 84 111 93C134 122 162 151 206 158C214 157 217 146 210 132Z" fill="#E8AFBF" stroke="#7E4A5C" stroke-width="3"/>
+      <path d="M208 132C216 91 245 57 278 50C279 91 264 124 221 157C213 160 206 150 208 132Z" fill="#D994A9" stroke="#7E4A5C" stroke-width="3"/>
+      <path d="M206 158C169 141 134 142 99 160C124 190 161 204 207 184C215 178 215 168 206 158Z" fill="#DEA0B1" stroke="#7E4A5C" stroke-width="3"/>
+      <path d="M212 158C247 143 291 147 325 168C299 197 263 206 216 184C208 178 207 167 212 158Z" fill="#E7B0BF" stroke="#7E4A5C" stroke-width="3"/>
+      <path d="M208 179C187 205 179 236 188 269C220 244 236 213 225 176C221 168 213 169 208 179Z" fill="#D78FA5" stroke="#7E4A5C" stroke-width="3"/>
+      <path d="M211 179C229 203 251 222 284 229C279 195 260 169 224 157C216 154 209 163 211 179Z" fill="#E9B8C4" stroke="#7E4A5C" stroke-width="3"/>
+
+      <path d="M210 176C205 149 194 125 177 104" stroke="#6A4938" stroke-width="4"/>
+      <path d="M215 176C220 145 229 117 245 94" stroke="#6A4938" stroke-width="4"/>
+      <path d="M207 177C190 155 174 143 156 135" stroke="#6A4938" stroke-width="4"/>
+      <path d="M216 179C241 157 257 147 278 141" stroke="#6A4938" stroke-width="4"/>
+      <circle cx="177" cy="102" r="5" fill="#9B6438"/>
+      <circle cx="245" cy="92" r="5" fill="#9B6438"/>
+      <circle cx="155" cy="134" r="5" fill="#9B6438"/>
+      <circle cx="279" cy="140" r="5" fill="#9B6438"/>
+      <path d="M213 178C214 153 214 129 214 106" stroke="#D2B45E" stroke-width="3"/>
+
+      <g fill="#A96A7C" opacity="0.72">
+        <circle cx="138" cy="112" r="2.2"/><circle cx="156" cy="122" r="2.2"/><circle cx="124" cy="146" r="2.2"/>
+        <circle cx="169" cy="179" r="2.2"/><circle cx="191" cy="194" r="2.2"/><circle cx="244" cy="91" r="2.2"/>
+        <circle cx="268" cy="116" r="2.2"/><circle cx="294" cy="166" r="2.2"/><circle cx="119" cy="174" r="2.2"/>
+        <circle cx="263" cy="180" r="2.2"/><circle cx="205" cy="220" r="2.2"/><circle cx="229" cy="198" r="2.2"/>
+      </g>
+    </g>
+
+    <path d="M214 76C215 51 228 32 249 21" stroke="#526A51" stroke-width="4"/>
+    <path d="M249 21C273 17 291 26 301 44C278 49 260 43 249 21Z" fill="#799170" stroke="#536A53" stroke-width="3"/>
   </g>
 </svg>
