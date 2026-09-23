@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Camera, Heart, Plus, Shirt, Upload } from 'lucide-react';
+import { Heart, Plus, Shirt, Upload } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
-import CameraCapture from './CameraCapture';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -27,7 +26,6 @@ export default function WardrobeClient() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [adding, setAdding] = useState(false);
-  const [camera, setCamera] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [editing, setEditing] = useState<ClothingItem | null>(null);
   const [deleting, setDeleting] = useState<ClothingItem | null>(null);
@@ -64,14 +62,12 @@ export default function WardrobeClient() {
 
   function startAdd() {
     setAdding(true);
-    setCamera(false);
     setPhoto(null);
     setMessage('');
   }
 
   function closeAdd() {
     setAdding(false);
-    setCamera(false);
     setPhoto(null);
     setMessage('');
   }
@@ -79,7 +75,7 @@ export default function WardrobeClient() {
   async function addClothing(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!photo) {
-      setMessage('Escolha ou tire uma foto antes de salvar.');
+      setMessage('Escolha uma foto antes de salvar.');
       return;
     }
     setBusy(true);
@@ -256,33 +252,34 @@ export default function WardrobeClient() {
           <div className="empty">
             <Shirt className="empty-icon"/>
             <h3 className="empty-title">{filter === 'all' ? 'Seu guarda-roupa ainda está vazio.' : 'Nenhuma peça nesta categoria.'}</h3>
-            <p className="empty-copy">{filter === 'all' ? 'Cadastre sua primeira peça com uma foto.' : 'Você pode mudar o filtro ou adicionar uma nova peça.'}</p>
+            <p className="empty-copy">{filter === 'all' ? 'Cadastre sua primeira peça com uma imagem.' : 'Você pode mudar o filtro ou adicionar uma nova peça.'}</p>
             {filter === 'all' && <button className="btn btn-soft" onClick={startAdd}>Adicionar minha primeira peça</button>}
           </div>
         )}
       </section>
 
       {adding && (
-        <Modal title={camera ? 'Tirar foto' : photo ? 'Confirmar foto' : 'Adicionar peça'} onClose={closeAdd} wide>
-          {camera ? (
-            <CameraCapture onUse={(file) => { setPhoto(file); setCamera(false); }} onCancel={() => setCamera(false)} />
-          ) : photo ? (
+        <Modal title={photo ? 'Confirmar foto' : 'Adicionar peça'} onClose={closeAdd} wide>
+          {photo ? (
             <>
               <div className="photo-confirm"><img src={photoUrl || ''} alt="Prévia da foto da peça" /></div>
               <div className="inline-actions" style={{marginTop:12}}>
-                <button type="button" className="btn btn-soft" onClick={() => setCamera(true)}>Tirar outra</button>
                 <button type="button" className="btn btn-ghost" onClick={() => fileRef.current?.click()}><Upload size={17}/>Escolher outra</button>
               </div>
-              <input ref={fileRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(e) => { const file = e.target.files?.[0]; if (file) setPhoto(file); }} />
+              <input ref={fileRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const file = e.target.files?.[0]; if (file) setPhoto(file); }} />
               <ClothingForm onSubmit={addClothing} categories={categories} submitLabel="Salvar peça" busy={busy} />
             </>
           ) : (
             <>
-              <div className="camera-source-grid">
-                <button className="btn btn-soft" onClick={() => setCamera(true)}><Camera size={18}/>Tirar foto</button>
-                <button className="btn btn-ghost" onClick={() => fileRef.current?.click()}><Upload size={18}/>Escolher da galeria</button>
+              <div className="photo-picker">
+                <div className="photo-picker-icon"><Upload size={22}/></div>
+                <div>
+                  <strong>Escolha uma foto da peça</strong>
+                  <p>Use uma imagem já salva no celular ou computador.</p>
+                </div>
+                <button type="button" className="btn btn-soft" onClick={() => fileRef.current?.click()}><Upload size={18}/>Escolher foto</button>
               </div>
-              <input ref={fileRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(e) => { const file = e.target.files?.[0]; if (file) setPhoto(file); }} />
+              <input ref={fileRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const file = e.target.files?.[0]; if (file) setPhoto(file); }} />
             </>
           )}
         </Modal>

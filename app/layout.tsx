@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ToastProvider } from '@/components/ui/ToastProvider';
+import DebugProbe from '@/components/debug/DebugProbe';
 
 export const metadata: Metadata = {
   title: 'Meu Look',
@@ -17,5 +18,5 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  return <html lang="pt-BR"><body><ToastProvider>{children}</ToastProvider></body></html>;
+  return <html lang="pt-BR"><body><ToastProvider><DebugProbe />{children}</ToastProvider></body></html>;
 }

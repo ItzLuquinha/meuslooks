@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { Home, Images, MessageCircle, MoreHorizontal, Settings, Shirt, UserRound, Tags, X } from 'lucide-react';
+import { Bug, Home, Images, MessageCircle, MoreHorizontal, Settings, Shirt, UserRound, Tags, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
@@ -12,6 +12,7 @@ const links = [
   ['/admin/mensagens','Mensagens',MessageCircle],
   ['/admin/categorias','Categorias',Tags],
   ['/admin/configuracoes','Configurações',Settings],
+  ['/admin/debug','Debug',Bug],
 ] as const;
 
 export default function AdminNav() {

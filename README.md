@@ -20,8 +20,7 @@ Aplicativo web privado para organização pessoal de roupas e looks. Esta pasta 
 - Composição de looks agrupada por função: parte de cima, parte de baixo, terceira peça, roupa íntima, sapato, bolsa, acessório e outros.
 - Favoritos de looks exibem as fotos reais das peças cadastradas.
 - Gerenciamento de categorias pelo administrador com criação, edição, ativação/desativação e exclusão segura.
-- Câmera com preview, captura sem upload imediato, confirmação por "Usar foto", "Tirar outra" e "Cancelar".
-- Gerenciamento de `MediaStream` com referência estável e encerramento das tracks ao trocar/fechar.
+- Upload de imagens locais para as peças do guarda-roupa, com preview antes de salvar.
 - Substituição de `alert()`, `prompt()` e `confirm()` por modais e mensagens próprias da interface.
 - Validação server-side e whitelisting dos campos de atualização de roupas.
 - Proteção administrativa das imagens para a usuária selecionada.
@@ -86,7 +85,6 @@ O repositório deve ser validado novamente depois da instalação das dependênc
 3. Execute `supabase/schema.sql` no projeto Supabase.
 4. Faça o bootstrap do administrador usando um ambiente server-side com `SUPABASE_SERVICE_ROLE_KEY`.
 5. Configure `NEXT_PUBLIC_SITE_URL` com o domínio da Vercel.
-6. Teste login, cadastro, recuperação de senha, câmera, upload, guarda-roupa, looks, favoritos e `/admin`.
 
 ## Segurança
 
@@ -107,9 +105,7 @@ A revisão adiciona `clothing_categories.is_active` e novas políticas RLS para 
 A decoração de lírios rosa foi desenhada localmente em SVG em uma direção botânica/aquarela inspirada em uma referência de lírio rosa pesquisada online. O arquivo local evita depender de hotlink externo e mantém o detalhe leve para o aplicativo.
 
 
-## Câmera e e-mail
 
-A aba de câmera permite capturar e editar fotos antes do envio. O e-mail é encaminhado pelo FormSubmit, sem SMTP ou senha de e-mail. A primeira utilização exige a confirmação única do endereço destinatário pelo próprio FormSubmit.
 
 
 ## Recuperação de senha

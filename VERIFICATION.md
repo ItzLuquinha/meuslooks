@@ -12,9 +12,6 @@
 - [x] APIs administrativas resolvem a usuária selecionada no servidor.
 - [x] Categorias administrativas com criação, edição, ativação/desativação e exclusão segura.
 - [x] Categorias em uso não são excluídas; a API responde 409 e orienta desativação.
-- [x] Câmera com preview antes de aceitar a foto.
-- [x] Upload da câmera somente após confirmação no formulário de salvar peça.
-- [x] `MediaStream` gerenciado por `useRef` e encerrado ao fechar/trocar câmera.
 - [x] Favoritos de looks exibem composição real com imagens das peças.
 - [x] Navegação administrativa mobile com menu "Mais" para áreas que não cabem na barra inferior.
 - [x] Usos de `alert()`, `prompt()` e `confirm()` removidos dos componentes e APIs revisados.
@@ -23,6 +20,8 @@
 - [x] Alteração de senha tenta preservar consistência entre Supabase Auth e `private_credentials`.
 - [x] Recuperação de senha sincroniza `private_credentials` depois do `updateUser`.
 - [x] RLS de categorias separa leitura de categorias padrão de escrita nas categorias da própria conta.
+- [x] Upload de imagens locais continua disponível no cadastro de peças.
+- [x] Nenhuma função de captura por câmera ou envio de foto por e-mail permanece no aplicativo.
 - [x] Nenhuma variável pública de secret (`NEXT_PUBLIC_ADMIN_PASSWORD`, `NEXT_PUBLIC_ENCRYPTION_KEY` ou `NEXT_PUBLIC_SERVICE_ROLE_KEY`) é usada em código de runtime.
 - [x] Nenhum valor real de `ADMIN_PASSWORD` ou `ENCRYPTION_KEY` foi colocado no código.
 - [x] Sintaxe TS/TSX validada por transpile com o TypeScript disponível no ambiente: 85 arquivos de código-fonte.
