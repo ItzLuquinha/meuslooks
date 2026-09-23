@@ -61,15 +61,6 @@ create table if not exists public.outfit_items (
   primary key(outfit_id,clothing_item_id)
 );
 
-create table if not exists public.favorites (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles(id) on delete cascade,
-  clothing_item_id uuid references public.clothing_items(id) on delete cascade,
-  outfit_id uuid references public.outfits(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  check ((clothing_item_id is not null) <> (outfit_id is not null))
-);
-
 create table if not exists public.admin_messages (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -92,7 +83,6 @@ alter table public.clothing_categories enable row level security;
 alter table public.clothing_items enable row level security;
 alter table public.outfits enable row level security;
 alter table public.outfit_items enable row level security;
-alter table public.favorites enable row level security;
 alter table public.admin_messages enable row level security;
 
 drop policy if exists profiles_self_select on public.profiles;
@@ -119,8 +109,6 @@ create policy outfits_own on public.outfits for all to authenticated using (user
 drop policy if exists outfit_items_own on public.outfit_items;
 create policy outfit_items_own on public.outfit_items for all to authenticated using (exists(select 1 from public.outfits o where o.id=outfit_id and o.user_id=auth.uid())) with check (exists(select 1 from public.outfits o where o.id=outfit_id and o.user_id=auth.uid()));
 
-drop policy if exists favorites_own on public.favorites;
-create policy favorites_own on public.favorites for all to authenticated using (user_id=auth.uid()) with check (user_id=auth.uid());
 
 drop policy if exists messages_auth_read on public.admin_messages;
 create policy messages_auth_read on public.admin_messages for select to authenticated using (active=true);

@@ -1,21 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Camera,
-  Check,
-  Contrast,
-  FlipHorizontal,
-  RotateCcw,
-  Send,
-  SlidersHorizontal,
-  Sparkles,
-  SunMedium,
-  Thermometer,
-  X,
-} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Camera, Check, Contrast, FlipHorizontal, RotateCcw, Send, SlidersHorizontal, SunMedium, Thermometer } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import Modal from '@/components/ui/Modal';
+import { useToast } from '@/components/ui/ToastProvider';
 
 type FilterName = 'natural' | 'soft' | 'rose' | 'mono' | 'warm';
 type Adjustments = { exposure: number; lighting: number; contrast: number; saturation: number; warmth: number };
@@ -24,9 +13,10 @@ const FILTERS: Array<{ id: FilterName; label: string; adjustments: Partial<Adjus
   { id: 'natural', label: 'Natural', adjustments: {} },
   { id: 'soft', label: 'Suave', adjustments: { exposure: 5, lighting: 7, contrast: -8, saturation: -4, warmth: 3 } },
   { id: 'rose', label: 'Rosé', adjustments: { exposure: 3, lighting: 6, contrast: -4, saturation: 9, warmth: 14 } },
-  { id: 'mono', label: 'P&B', adjustments: { contrast: 10, saturation: -100, warmth: 0 } },
+  { id: 'mono', label: 'P&B', adjustments: { contrast: 10, saturation: -100 } },
   { id: 'warm', label: 'Quente', adjustments: { exposure: 2, lighting: 4, contrast: 2, saturation: 6, warmth: 18 } },
 ];
+
 function clamp(value: number, min: number, max: number) { return Math.min(max, Math.max(min, value)); }
 function filterCss(filter: FilterName, adjustments: Adjustments) {
   const preset = FILTERS.find((entry) => entry.id === filter)?.adjustments ?? {};
@@ -35,11 +25,7 @@ function filterCss(filter: FilterName, adjustments: Adjustments) {
   const contrast = adjustments.contrast + (preset.contrast ?? 0);
   const saturation = adjustments.saturation + (preset.saturation ?? 0);
   const warmth = adjustments.warmth + (preset.warmth ?? 0);
-  const brightness = 1 + exposure * 0.006 + lighting * 0.0045;
-  const contrastFactor = 1 + contrast * 0.006;
-  const saturationFactor = 1 + saturation * 0.007;
-  const sepia = clamp(Math.max(warmth, 0) * 0.0034, 0, 0.22);
-  return `brightness(${brightness.toFixed(3)}) contrast(${contrastFactor.toFixed(3)}) saturate(${saturationFactor.toFixed(3)}) sepia(${sepia.toFixed(3)}) hue-rotate(${clamp(warmth * -0.18, -8, 8).toFixed(2)}deg)`;
+  return `brightness(${(1 + exposure * 0.006 + lighting * 0.0045).toFixed(3)}) contrast(${(1 + contrast * 0.006).toFixed(3)}) saturate(${(1 + saturation * 0.007).toFixed(3)}) sepia(${clamp(Math.max(warmth, 0) * 0.0034, 0, 0.22).toFixed(3)}) hue-rotate(${clamp(warmth * -0.18, -8, 8).toFixed(2)}deg)`;
 }
 
 export default function LookCameraClient() {
@@ -56,32 +42,46 @@ export default function LookCameraClient() {
   const [sent, setSent] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [paused, setPaused] = useState(false);
+  const { showToast } = useToast();
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
-  const cleanupPreview = useCallback(() => {
-    setCapturedUrl((current) => { if (current) URL.revokeObjectURL(current); return null; });
+
+  const clearCaptured = useCallback(() => {
+    setCapturedUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return null;
+    });
+    setCapturedFile(null);
   }, []);
+
   const startCamera = useCallback(async () => {
-    stopStream(); setPaused(false); setStarting(true); setError('');
+    stopStream();
+    setPaused(false);
+    setStarting(true);
+    setError('');
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1440 } } });
       streamRef.current = stream;
-      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
     } catch {
       setError('Não conseguimos acessar a câmera. Verifique as permissões do navegador.');
-    } finally { setStarting(false); }
+    } finally {
+      setStarting(false);
+    }
   }, [facing, stopStream]);
 
   useEffect(() => {
     if (!capturedUrl && !sent && !paused) void startCamera();
     return () => stopStream();
   }, [capturedUrl, sent, paused, startCamera, stopStream]);
-  useEffect(() => () => { if (capturedUrl) URL.revokeObjectURL(capturedUrl); }, [capturedUrl]);
 
   const previewFilter = useMemo(() => filterCss(filter, adjustments), [filter, adjustments]);
 
@@ -90,37 +90,69 @@ export default function LookCameraClient() {
     if (!video?.videoWidth || !video.videoHeight) return;
     const canvas = document.createElement('canvas');
     const scale = Math.min(1, 2000 / Math.max(video.videoWidth, video.videoHeight));
-    canvas.width = Math.round(video.videoWidth * scale); canvas.height = Math.round(video.videoHeight * scale);
-    const context = canvas.getContext('2d'); if (!context) return;
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) return;
     if (facing === 'user') { context.translate(canvas.width, 0); context.scale(-1, 1); }
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob((blob) => {
       if (!blob) return;
       const file = new File([blob], `meu-look-${Date.now()}.jpg`, { type: 'image/jpeg' });
-      cleanupPreview(); setCapturedFile(file); setCapturedUrl(URL.createObjectURL(file)); setFilter('natural'); setAdjustments(DEFAULT_ADJUSTMENTS); setShowEditor(true); setSent(false); stopStream();
+      clearCaptured();
+      setCapturedFile(file);
+      setCapturedUrl(URL.createObjectURL(file));
+      setFilter('natural');
+      setAdjustments(DEFAULT_ADJUSTMENTS);
+      setShowEditor(true);
+      setSent(false);
+      stopStream();
     }, 'image/jpeg', 0.92);
   }
 
-  function retake() { cleanupPreview(); setCapturedFile(null); setShowEditor(false); setSent(false); setError(''); setPaused(false); }
-  function closeAll() { stopStream(); cleanupPreview(); setCapturedFile(null); setShowEditor(false); setSent(false); setPaused(true); }
-  function togglePause() { if (paused) void startCamera(); else { stopStream(); setPaused(true); } }
-  function resetAdjustments() { setFilter('natural'); setAdjustments(DEFAULT_ADJUSTMENTS); }
+  function retake() {
+    clearCaptured();
+    setShowEditor(false);
+    setSent(false);
+    setError('');
+    setPaused(false);
+  }
+
+  function closeAll() {
+    stopStream();
+    clearCaptured();
+    setShowEditor(false);
+    setSent(false);
+    setPaused(true);
+  }
+
+  function togglePause() {
+    if (paused) void startCamera();
+    else { stopStream(); setPaused(true); }
+  }
+
+  function resetAdjustments() {
+    setFilter('natural');
+    setAdjustments(DEFAULT_ADJUSTMENTS);
+  }
 
   async function exportEditedFile() {
-    if (!capturedFile || !capturedUrl) throw new Error('Foto indisponível.');
-    const image = new Image(); image.src = capturedUrl;
-    await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Não foi possível preparar a foto.')); });
+    if (!capturedUrl) throw new Error('Foto indisponível.');
+    const image = new Image();
+    image.src = capturedUrl;
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Não foi possível preparar a foto.'));
+    });
     const scale = Math.min(1, 2000 / Math.max(image.naturalWidth, image.naturalHeight));
-    const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(image.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-    const context = canvas.getContext('2d'); if (!context) throw new Error('Não foi possível preparar a foto.');
-    context.filter = previewFilter; context.drawImage(image, 0, 0, canvas.width, canvas.height); context.filter = 'none';
-    const warm = adjustments.warmth + (FILTERS.find((entry) => entry.id === filter)?.adjustments.warmth ?? 0);
-    if (warm !== 0) { context.fillStyle = warm > 0 ? `rgba(225,123,132,${Math.min(Math.abs(warm)/180,0.14)})` : `rgba(120,170,205,${Math.min(Math.abs(warm)/240,0.1)})`; context.fillRect(0,0,canvas.width,canvas.height); }
-    if (filter === 'mono') {
-      const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-      for (let i = 0; i < pixels.data.length; i += 4) { const gray = Math.round(pixels.data[i]*0.299 + pixels.data[i+1]*0.587 + pixels.data[i+2]*0.114); pixels.data[i]=gray; pixels.data[i+1]=gray; pixels.data[i+2]=gray; }
-      context.putImageData(pixels, 0, 0);
-    }
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Não foi possível preparar a foto.');
+    context.filter = previewFilter;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    context.filter = 'none';
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.84));
     if (!blob) throw new Error('Não foi possível gerar a foto final.');
     if (blob.size <= 3_800_000) return new File([blob], `meu-look-editado-${Date.now()}.jpg`, { type: 'image/jpeg' });
@@ -130,143 +162,114 @@ export default function LookCameraClient() {
   }
 
   async function sendPhoto() {
-    setSending(true); setError('');
+    if (sending) return;
+    setSending(true);
+    setError('');
     try {
       const file = await exportEditedFile();
-      await submitPhotoThroughFormSubmit(file, {
-        filter,
-        adjustments,
-        name: 'Minha namorada',
-      });
-      setSent(true); setShowEditor(false); setCapturedFile(null); cleanupPreview();
+      const form = new FormData();
+      form.set('photo', file);
+      form.set('filter', filter);
+      form.set('adjustments', JSON.stringify(adjustments));
+      form.set('name', 'Minha foto');
+      const response = await fetch('/api/photo-email', { method: 'POST', body: form });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível enviar a foto.');
+      setSent(true);
+      setShowEditor(false);
+      clearCaptured();
+      showToast('Foto enviada', 'success');
     } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : 'Não foi possível enviar a foto.');
+      const message = sendError instanceof Error ? sendError.message : 'Não foi possível enviar a foto.';
+      setError(message);
+      showToast(message, 'error');
     } finally {
       setSending(false);
     }
   }
 
-async function submitPhotoThroughFormSubmit(
-  file: File,
-  metadata: { filter: FilterName; adjustments: Adjustments; name: string },
-) {
-  const recipient = 'rianbraga718@gmail.com';
-  const returnUrl = `${window.location.origin}/camera?photo_sent=1`;
-  const iframeName = `formsubmit-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const iframe = document.createElement('iframe');
-  iframe.name = iframeName;
-  iframe.title = 'Envio da foto';
-  iframe.style.position = 'fixed';
-  iframe.style.width = '1px';
-  iframe.style.height = '1px';
-  iframe.style.border = '0';
-  iframe.style.opacity = '0';
-  iframe.style.pointerEvents = 'none';
-  iframe.style.left = '-9999px';
-  document.body.appendChild(iframe);
+  return (
+    <>
+      <PageHeader />
+      <div className="camera-page">
+        <div className="section-head camera-page-head">
+          <div>
+            <h1 className="page-title">Câmera</h1>
+            <p className="page-subtitle">Capture uma foto, ajuste como quiser e envie sem sair do Meu Look.</p>
+          </div>
+          <div className="camera-private-note">A foto editada é a mesma que será enviada.</div>
+        </div>
 
-  const form = document.createElement('form');
-  form.method = 'POST';
-  form.action = `https://formsubmit.co/${encodeURIComponent(recipient)}`;
-  form.enctype = 'multipart/form-data';
-  form.target = iframeName;
-  form.style.display = 'none';
+        {sent ? (
+          <section className="card camera-sent-state">
+            <div className="camera-sent-mark"><Check size={30}/></div>
+            <h2 className="section-title">Foto enviada</h2>
+            <p>Seu arquivo editado foi encaminhado com sucesso.</p>
+            <div className="inline-actions camera-sent-actions">
+              <button type="button" className="btn btn-primary" onClick={retake}><Camera size={17}/>Tirar outra</button>
+            </div>
+          </section>
+        ) : (
+          <section className="card camera-studio">
+            <div className="camera-viewport">
+              <video ref={videoRef} className="camera-video" playsInline muted aria-label="Prévia da câmera" style={{ filter: previewFilter }}/>
+              <div className="camera-vignette" aria-hidden="true" />
+              <div className="camera-guide" aria-hidden="true"><span>Enquadre sua foto</span></div>
+              <div className="camera-top-controls">
+                <button type="button" className="camera-control" aria-label="Trocar câmera" onClick={() => setFacing((current) => current === 'environment' ? 'user' : 'environment')} disabled={starting}><FlipHorizontal size={18}/></button>
+                <button type="button" className="camera-control" aria-label={paused ? 'Retomar câmera' : 'Pausar câmera'} onClick={togglePause} disabled={starting}><PauseIcon paused={paused}/></button>
+              </div>
+              {starting && <div className="camera-status">Abrindo câmera…</div>}
+              {error && <div className="camera-error" role="alert">{error}</div>}
+              <div className="camera-bottom-controls"><button type="button" className="camera-capture" aria-label="Capturar foto" onClick={capture} disabled={starting || paused}><span><Camera size={25}/></span></button></div>
+            </div>
+            <div className="camera-studio-footer">
+              <div className="camera-tip"><SlidersHorizontal size={15}/><span>Depois da captura, você poderá escolher filtros e ajustar exposição, iluminação, contraste, saturação e temperatura.</span></div>
+              <button type="button" className="btn btn-ghost" onClick={closeAll}>Fechar câmera</button>
+            </div>
+          </section>
+        )}
+      </div>
 
-  const appendField = (name: string, value: string) => {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = name;
-    input.value = value;
-    form.appendChild(input);
-  };
-
-  appendField('_subject', 'Novo look — Meu Look');
-  appendField('_template', 'table');
-  appendField('_captcha', 'false');
-  appendField('_honey', '');
-  appendField('_url', window.location.href);
-  appendField('_next', returnUrl);
-  appendField('nome', metadata.name);
-  appendField('filtro', metadata.filter);
-  appendField('ajustes', JSON.stringify(metadata.adjustments));
-  appendField('mensagem', 'Uma nova foto do look foi enviada pelo Meu Look.');
-
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.name = 'attachment';
-  fileInput.accept = 'image/jpeg,image/png,image/webp';
-  fileInput.style.display = 'none';
-  const transfer = new DataTransfer();
-  transfer.items.add(file);
-  fileInput.files = transfer.files;
-  form.appendChild(fileInput);
-
-  document.body.appendChild(form);
-
-  try {
-    await new Promise<void>((resolve, reject) => {
-      let submitted = false;
-      let finished = false;
-      const timeout = window.setTimeout(() => {
-        if (finished) return;
-        finished = true;
-        cleanup();
-        reject(new Error('Não foi possível confirmar o envio da foto. Verifique sua conexão e tente novamente.'));
-      }, 30000);
-
-      const cleanup = () => {
-        window.clearTimeout(timeout);
-        iframe.removeEventListener('load', handleLoad);
-        iframe.removeEventListener('error', handleError);
-        form.remove();
-        window.setTimeout(() => iframe.remove(), 100);
-      };
-
-      const finish = (error?: Error) => {
-        if (finished) return;
-        finished = true;
-        cleanup();
-        if (error) reject(error);
-        else resolve();
-      };
-
-      const handleLoad = () => {
-        if (!submitted || finished) return;
-        try {
-          const loadedUrl = iframe.contentWindow?.location.href || '';
-          if (loadedUrl.startsWith(returnUrl)) {
-            finish();
-          }
-        } catch {
-        }
-      };
-
-      const handleError = () => finish(new Error('Não foi possível enviar a foto. Verifique sua conexão e tente novamente.'));
-      iframe.addEventListener('load', handleLoad);
-      iframe.addEventListener('error', handleError);
-      submitted = true;
-      form.submit();
-    });
-  } finally {
-    form.remove();
-    iframe.remove();
-  }
+      {showEditor && capturedUrl && (
+        <Modal title="Editar foto" onClose={() => { if (!sending) retake(); }} wide>
+          <div className="photo-editor">
+            <div className="photo-editor-preview">
+              <img src={capturedUrl} alt="Prévia da foto capturada" style={{ filter: previewFilter }}/>
+              <span className="photo-editor-label">Prévia final</span>
+            </div>
+            <div className="photo-editor-controls">
+              <section className="editor-section">
+                <div className="section-head"><div><h3 className="section-title">Filtros</h3><p className="page-subtitle">Escolha uma base e ajuste depois.</p></div></div>
+                <div className="filter-grid">
+                  {FILTERS.map((entry) => <button type="button" key={entry.id} className={`filter-chip ${filter === entry.id ? 'active' : ''}`} onClick={() => setFilter(entry.id)}><span className="filter-swatch" style={{ backgroundImage: `url(${capturedUrl})`, filter: filterCss(entry.id, DEFAULT_ADJUSTMENTS) }}/><span>{entry.label}</span></button>)}
+                </div>
+              </section>
+              <section className="editor-section">
+                <div className="section-head"><div><h3 className="section-title">Ajustes</h3></div><button type="button" className="btn btn-ghost" onClick={resetAdjustments}><RotateCcw size={14}/>Resetar</button></div>
+                <Adjustment label="Exposição" icon={<SunMedium size={16}/>} value={adjustments.exposure} onChange={(value) => setAdjustments((current) => ({ ...current, exposure: value }))}/>
+                <Adjustment label="Iluminação" icon={<SunMedium size={16}/>} value={adjustments.lighting} onChange={(value) => setAdjustments((current) => ({ ...current, lighting: value }))}/>
+                <Adjustment label="Contraste" icon={<Contrast size={16}/>} value={adjustments.contrast} onChange={(value) => setAdjustments((current) => ({ ...current, contrast: value }))}/>
+                <Adjustment label="Saturação" icon={<SlidersHorizontal size={16}/>} value={adjustments.saturation} onChange={(value) => setAdjustments((current) => ({ ...current, saturation: value }))}/>
+                <Adjustment label="Temperatura" icon={<Thermometer size={16}/>} value={adjustments.warmth} onChange={(value) => setAdjustments((current) => ({ ...current, warmth: value }))}/>
+              </section>
+              {error && <div className="inline-message" role="alert">{error}</div>}
+              <div className="inline-actions editor-actions">
+                <button type="button" className="btn btn-ghost" onClick={retake} disabled={sending}><RotateCcw size={15}/>Tirar outra</button>
+                <button type="button" className="btn btn-primary" onClick={() => void sendPhoto()} disabled={sending}><Send size={15}/>{sending ? 'Enviando…' : 'Enviar foto'}</button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
 }
 
-
-  return <>
-    <PageHeader />
-    <div className="camera-page lily-page">
-      <div className="lily-decoration" aria-hidden="true"><img className="lily left" src="/pink-lily.svg" alt="" /><img className="lily right" src="/pink-lily.svg" alt="" /></div>
-      <div className="section-head camera-page-head"><div><p className="eyebrow">Um momento seu</p><h1 className="page-title">Tirar foto</h1><p className="page-subtitle">Registre o look de hoje, ajuste a foto do seu jeito e envie para o Rian.</p></div><span className="camera-private-note"><Sparkles size={15} /> A foto só é enviada quando você confirmar.</span></div>
-
-      {!capturedUrl && !sent ? <section className="camera-studio card"><div className="camera-viewport"><video ref={videoRef} playsInline muted autoPlay className="camera-video" style={{ transform: facing === 'user' ? 'scaleX(-1)' : undefined }} /><div className="camera-vignette" aria-hidden="true" /><div className="camera-guide" aria-hidden="true"><span>centralize o look aqui</span></div>{starting && <div className="camera-status">Abrindo câmera…</div>}{error && <div className="camera-error">{error}</div>}<div className="camera-top-controls"><button className="camera-control" type="button" onClick={() => setFacing((value) => value === 'environment' ? 'user' : 'environment')} disabled={starting} aria-label="Trocar câmera"><FlipHorizontal size={19} /></button></div><div className="camera-bottom-controls"><button className="camera-capture" type="button" onClick={capture} disabled={starting || Boolean(error)} aria-label="Capturar foto"><span><Camera size={26} /></span></button></div></div><div className="camera-studio-footer"><div className="camera-tip"><SlidersHorizontal size={17} /><span>Depois da captura, você pode ajustar exposição, luz, contraste, cor e filtros.</span></div><button type="button" className="btn btn-ghost" onClick={togglePause}>{paused ? 'Abrir câmera' : 'Pausar câmera'}</button></div></section> : sent ? <section className="card camera-sent-state"><div className="camera-sent-mark"><Check size={28} /></div><h2 className="section-title">Foto enviada.</h2><p>Ela foi enviada para o e-mail do Rian.</p><div className="inline-actions camera-sent-actions"><button type="button" className="btn btn-primary" onClick={retake}><Camera size={17}/> Tirar outra</button><button type="button" className="btn btn-ghost" onClick={closeAll}><X size={17}/> Fechar</button></div></section> : null}
-
-      {showEditor && capturedUrl && <Modal title="Ajustar foto" onClose={closeAll} wide><div className="photo-editor"><div className="photo-editor-preview"><img src={capturedUrl} alt="Foto capturada do look" style={{ filter: previewFilter }} /><div className="photo-editor-label">prévia</div></div><div className="photo-editor-controls"><div className="editor-section"><div className="section-head"><div><p className="eyebrow">Ajustes</p><h3 className="section-title">Luz e cor</h3></div><button type="button" className="text-link" onClick={resetAdjustments}>Restaurar</button></div><AdjustmentSlider label="Exposição" icon={<SunMedium size={16}/>} value={adjustments.exposure} min={-40} max={40} onChange={(value)=>setAdjustments((c)=>({...c,exposure:value}))}/><AdjustmentSlider label="Iluminação" icon={<SunMedium size={16}/>} value={adjustments.lighting} min={-40} max={40} onChange={(value)=>setAdjustments((c)=>({...c,lighting:value}))}/><AdjustmentSlider label="Contraste" icon={<Contrast size={16}/>} value={adjustments.contrast} min={-40} max={40} onChange={(value)=>setAdjustments((c)=>({...c,contrast:value}))}/><AdjustmentSlider label="Saturação" icon={<Sparkles size={16}/>} value={adjustments.saturation} min={-50} max={50} onChange={(value)=>setAdjustments((c)=>({...c,saturation:value}))}/><AdjustmentSlider label="Temperatura" icon={<Thermometer size={16}/>} value={adjustments.warmth} min={-50} max={50} onChange={(value)=>setAdjustments((c)=>({...c,warmth:value}))}/></div><div className="editor-section"><p className="eyebrow">Filtros</p><div className="filter-grid">{FILTERS.map((entry)=><button key={entry.id} type="button" className={`filter-chip${filter===entry.id?' active':''}`} onClick={()=>setFilter(entry.id)}><span className="filter-swatch" style={{backgroundImage:`url(${capturedUrl})`, filter:filterCss(entry.id,DEFAULT_ADJUSTMENTS)}}/><span>{entry.label}</span></button>)}</div></div>{error && <div className="card alert-card" role="alert">{error}</div>}<div className="modal-actions inline-actions editor-actions"><button type="button" className="btn btn-ghost" onClick={retake} disabled={sending}><RotateCcw size={17}/> Tirar outra</button><button type="button" className="btn btn-primary" onClick={sendPhoto} disabled={sending}><Send size={17}/> {sending?'Enviando…':'Enviar para Rian'}</button></div></div></div></Modal>}
-    </div>
-  </>;
+function PauseIcon({ paused }: { paused: boolean }) {
+  return paused ? <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1 }}>▶</span> : <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1 }}>Ⅱ</span>;
 }
 
-function AdjustmentSlider({ label, icon, value, min, max, onChange }: { label:string; icon:React.ReactNode; value:number; min:number; max:number; onChange:(value:number)=>void }) {
-  return <label className="adjustment-row"><span className="adjustment-label"><span className="adjustment-icon">{icon}</span>{label}<strong>{value>0?`+${value}`:value}</strong></span><input type="range" min={min} max={max} value={value} onChange={(event)=>onChange(Number(event.target.value))}/></label>;
+function Adjustment({ label, icon, value, onChange }: { label: string; icon: ReactNode; value: number; onChange: (value: number) => void }) {
+  return <label className="adjustment-row"><span className="adjustment-label"><span className="adjustment-icon">{icon}</span>{label}<strong>{value > 0 ? `+${value}` : value}</strong></span><input type="range" min={-100} max={100} value={value} onChange={(event) => onChange(Number(event.target.value))}/></label>;
 }

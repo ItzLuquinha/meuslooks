@@ -3,10 +3,32 @@ import { getCurrentContext } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+type CalendarItem = { clothing_item_id: string };
+
+type CalendarOutfit = {
+  id: string;
+  name: string;
+  occasion: string | null;
+  outfit_items: CalendarItem[] | null;
+};
+
+async function userContext() {
+  const context = await getCurrentContext();
+  return context.kind === 'user' && context.userId ? context : null;
+}
+
+async function hydrateUsage(admin: ReturnType<typeof createAdminClient>, userId: string, outfitId: string, wornOn: string) {
+  const { data: outfit } = await admin.from('outfits').select('id,outfit_items(clothing_item_id)').eq('id', outfitId).eq('user_id', userId).maybeSingle();
+  if (!outfit) return false;
+  const rows = ((outfit.outfit_items || []) as CalendarItem[]).map((item) => ({ user_id: userId, clothing_item_id: item.clothing_item_id, outfit_id: outfitId, worn_on: wornOn }));
+  if (!rows.length) return true;
+  const { error } = await admin.from('wardrobe_usage').upsert(rows, { onConflict: 'user_id,clothing_item_id,outfit_id,worn_on', ignoreDuplicates: true });
+  return !error;
+}
 
 export async function GET(request: Request) {
-  const context = await getCurrentContext();
-  if (context.kind !== 'user' || !context.userId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const context = await userContext();
+  if (!context) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
   const month = new URL(request.url).searchParams.get('month');
   if (!month || !/^\d{4}-\d{2}$/.test(month)) return NextResponse.json({ error: 'Mês inválido.' }, { status: 400 });
   const [year, monthNumber] = month.split('-').map(Number);
@@ -20,8 +42,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const context = await getCurrentContext();
-  if (context.kind !== 'user' || !context.userId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const context = await userContext();
+  if (!context) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
   const body = await request.json().catch(() => ({}));
   const outfitId = String(body.outfit_id || '');
   const wornOn = String(body.worn_on || '');
@@ -34,20 +56,44 @@ export async function POST(request: Request) {
   if (existing) return NextResponse.json({ error: 'Já existe um look registrado nesse dia.' }, { status: 409 });
   const { data: entry, error } = await admin.from('outfit_wears').insert({ user_id: context.userId, outfit_id: outfitId, worn_on: wornOn, note }).select('id,outfit_id,worn_on,note').single();
   if (error || !entry) return NextResponse.json({ error: 'Não foi possível registrar o look.' }, { status: 500 });
-  const itemRows = (outfit.outfit_items || []).map((item: { clothing_item_id: string }) => ({ user_id: context.userId, clothing_item_id: item.clothing_item_id, outfit_id: outfitId, worn_on: wornOn }));
-  if (itemRows.length) {
-    const { error: usageError } = await admin.from('wardrobe_usage').upsert(itemRows, { onConflict: 'user_id,clothing_item_id,outfit_id,worn_on', ignoreDuplicates: true });
-    if (usageError) {
-      await admin.from('outfit_wears').delete().eq('id', entry.id).eq('user_id', context.userId);
-      return NextResponse.json({ error: 'Não foi possível atualizar o histórico das peças.' }, { status: 500 });
-    }
+  if (!(await hydrateUsage(admin, context.userId, outfitId, wornOn))) {
+    await admin.from('outfit_wears').delete().eq('id', entry.id).eq('user_id', context.userId);
+    return NextResponse.json({ error: 'Não foi possível atualizar o histórico das peças.' }, { status: 500 });
   }
   return NextResponse.json({ entry });
 }
 
+export async function PATCH(request: Request) {
+  const context = await userContext();
+  if (!context) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const body = await request.json().catch(() => ({}));
+  const id = String(body.id || '');
+  const outfitId = String(body.outfit_id || '');
+  const wornOn = String(body.worn_on || '');
+  const note = String(body.note || '').trim().slice(0, 240) || null;
+  if (!id || !outfitId || !datePattern.test(wornOn)) return NextResponse.json({ error: 'Registro inválido.' }, { status: 400 });
+  const admin = createAdminClient();
+  const { data: current } = await admin.from('outfit_wears').select('id,outfit_id,worn_on,note').eq('id', id).eq('user_id', context.userId).maybeSingle();
+  if (!current) return NextResponse.json({ error: 'Registro não encontrado.' }, { status: 404 });
+  const { data: outfit } = await admin.from('outfits').select('id,outfit_items(clothing_item_id)').eq('id', outfitId).eq('user_id', context.userId).maybeSingle();
+  if (!outfit) return NextResponse.json({ error: 'Look não encontrado.' }, { status: 404 });
+  const { data: conflict } = await admin.from('outfit_wears').select('id').eq('user_id', context.userId).eq('worn_on', wornOn).neq('id', id).maybeSingle();
+  if (conflict) return NextResponse.json({ error: 'Já existe um look registrado nesse dia.' }, { status: 409 });
+
+  const { error: updateError } = await admin.from('outfit_wears').update({ outfit_id: outfitId, worn_on: wornOn, note }).eq('id', id).eq('user_id', context.userId);
+  if (updateError) return NextResponse.json({ error: 'Não foi possível atualizar o registro.' }, { status: 500 });
+  await admin.from('wardrobe_usage').delete().eq('user_id', context.userId).eq('outfit_id', current.outfit_id).eq('worn_on', current.worn_on);
+  if (!(await hydrateUsage(admin, context.userId, outfitId, wornOn))) {
+    await admin.from('outfit_wears').update({ outfit_id: current.outfit_id, worn_on: current.worn_on, note: current.note }).eq('id', id).eq('user_id', context.userId);
+    await hydrateUsage(admin, context.userId, current.outfit_id, current.worn_on);
+    return NextResponse.json({ error: 'Não foi possível atualizar o histórico das peças.' }, { status: 500 });
+  }
+  return NextResponse.json({ entry: { ...current, outfit_id: outfitId, worn_on: wornOn, note } });
+}
+
 export async function DELETE(request: Request) {
-  const context = await getCurrentContext();
-  if (context.kind !== 'user' || !context.userId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const context = await userContext();
+  if (!context) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
   const { id } = await request.json().catch(() => ({}));
   if (!id) return NextResponse.json({ error: 'Registro inválido.' }, { status: 400 });
   const admin = createAdminClient();

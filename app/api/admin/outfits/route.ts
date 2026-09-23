@@ -32,18 +32,30 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const { data: valid } = await admin.from('clothing_items').select('id').eq('user_id', user.id).in('id', itemIds);
   if (!valid || valid.length !== itemIds.length) return NextResponse.json({ error: 'Peças inválidas.' }, { status: 400 });
+  const isDayLook = Boolean(body.is_day_look);
+  let previousDayIds: string[] = [];
+  if (isDayLook) {
+    const { data: previousDay } = await admin.from('outfits').select('id').eq('user_id', user.id).eq('is_day_look', true);
+    previousDayIds = (previousDay || []).map((entry: { id: string }) => entry.id);
+    const { error: clearDayError } = await admin.from('outfits').update({ is_day_look: false }).eq('user_id', user.id);
+    if (clearDayError) return NextResponse.json({ error: 'Não foi possível atualizar o Look do Dia.' }, { status: 400 });
+  }
   const { data: outfit, error } = await admin.from('outfits').insert({
     user_id: user.id,
     name,
     occasion: String(body.occasion || '').trim() || null,
     notes: String(body.notes || '').trim() || null,
     is_favorite: Boolean(body.is_favorite),
-    is_day_look: false,
+    is_day_look: isDayLook,
   }).select('*').single();
-  if (error || !outfit) return NextResponse.json({ error: error?.message || 'Não foi possível criar o look.' }, { status: 400 });
+  if (error || !outfit) {
+    if (previousDayIds.length) await admin.from('outfits').update({ is_day_look: true }).in('id', previousDayIds).eq('user_id', user.id);
+    return NextResponse.json({ error: error?.message || 'Não foi possível criar o look.' }, { status: 400 });
+  }
   const { error: itemError } = await admin.from('outfit_items').insert(itemIds.map((clothing_item_id) => ({ outfit_id: outfit.id, clothing_item_id })));
   if (itemError) {
     await admin.from('outfits').delete().eq('id', outfit.id).eq('user_id', user.id);
+    if (previousDayIds.length) await admin.from('outfits').update({ is_day_look: true }).in('id', previousDayIds).eq('user_id', user.id);
     return NextResponse.json({ error: itemError.message }, { status: 400 });
   }
   return NextResponse.json({ outfit }, { status: 201 });

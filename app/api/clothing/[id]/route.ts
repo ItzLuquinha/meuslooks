@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { getCurrentContext } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
+async function categoryIsValid(categoryId: string, userId: string) {
+  const admin = createAdminClient();
+  const { data } = await admin.from('clothing_categories').select('id').eq('id', categoryId).eq('is_active', true).or(`user_id.is.null,user_id.eq.${userId}`).maybeSingle();
+  return Boolean(data);
+}
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const context = await getCurrentContext();
   if (context.kind !== 'user' || !context.userId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
@@ -24,12 +30,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (body.toggleFavorite === true) changes.is_favorite = !current.is_favorite;
   if (body.category_id !== undefined) {
     const categoryId = body.category_id ? String(body.category_id) : null;
-    if (categoryId) {
-      const { data: category } = await admin.from('clothing_categories').select('id').eq('id', categoryId).eq('is_active', true).or(`user_id.is.null,user_id.eq.${context.userId}`).maybeSingle();
-      if (!category) return NextResponse.json({ error: 'Categoria inválida.' }, { status: 400 });
-    }
+    if (categoryId && !(await categoryIsValid(categoryId, context.userId))) return NextResponse.json({ error: 'Categoria inválida.' }, { status: 400 });
     changes.category_id = categoryId;
   }
+
   if (!Object.keys(changes).length) return NextResponse.json({ item: current });
   const { data: item, error } = await admin.from('clothing_items').update(changes).eq('id', id).eq('user_id', context.userId).select('*,clothing_categories(id,name,is_active)').single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

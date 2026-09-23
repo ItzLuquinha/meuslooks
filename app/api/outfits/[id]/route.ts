@@ -24,7 +24,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   let previousDayIds: string[] = [];
   if (isDayLook) {
     const { data: previousDay } = await admin.from('outfits').select('id').eq('user_id', context.userId).eq('is_day_look', true).neq('id', id);
-    previousDayIds = (previousDay || []).map((entry) => entry.id);
+    previousDayIds = (previousDay || []).map((entry: { id: string }) => entry.id);
     const { error: clearDayError } = await admin.from('outfits').update({ is_day_look: false }).eq('user_id', context.userId).neq('id', id);
     if (clearDayError) return NextResponse.json({ error: 'Não foi possível atualizar o Look do Dia.' }, { status: 400 });
   }
@@ -51,7 +51,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (itemError) {
     await admin.from('outfits').update(previousOutfit || {}).eq('id', id).eq('user_id', context.userId);
     await admin.from('outfit_items').delete().eq('outfit_id', id);
-    if (previousItems?.length) await admin.from('outfit_items').insert(previousItems.map((entry) => ({ outfit_id: id, clothing_item_id: entry.clothing_item_id })));
+    if (previousItems?.length) await admin.from('outfit_items').insert(previousItems.map((entry: { clothing_item_id: string }) => ({ outfit_id: id, clothing_item_id: entry.clothing_item_id })));
     if (previousDayIds.length) await admin.from('outfits').update({ is_day_look: true }).in('id', previousDayIds).eq('user_id', context.userId);
     return NextResponse.json({ error: itemError.message }, { status: 400 });
   }

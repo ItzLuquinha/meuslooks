@@ -1,7 +1,9 @@
 "use client";
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, CalendarDays, Camera, Heart, Home, Settings, Shirt } from 'lucide-react';
+import { BarChart3, CalendarDays, Camera, ChevronUp, Heart, Home, Settings, Shirt, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const items = [
   ['/inicio','Início',Home],
@@ -13,14 +15,46 @@ const items = [
   ['/configuracoes','Configurações',Settings],
 ] as const;
 
-function NavLinks({ mobile=false }: { mobile?: boolean }) {
-  const path = usePathname();
-  return <>{items.map(([href,label,Icon]) => <Link key={href} href={href} className={`${mobile ? 'mobile-link' : 'nav-link'} ${path.startsWith(href) ? 'active' : ''}`}><Icon size={18}/><span>{label}</span></Link>)}</>;
-}
+const mobilePrimary = items.slice(0, 4);
+const mobileMore = items.slice(4);
+
+function isActive(path: string, href: string) { return path === href || path.startsWith(`${href}/`); }
 
 export default function AppNav() {
-  return <>
-    <aside className="sidebar"><div className="brand brand-with-lily"><img src="/pink-lily.svg" alt="" className="brand-lily" aria-hidden="true"/><span>Meu Look ♡</span></div><nav className="nav-stack"><NavLinks /></nav></aside>
-    <nav className="mobile-nav"><NavLinks mobile /></nav>
-  </>;
+  const path = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [path]);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setMoreOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [moreOpen]);
+
+  return (
+    <>
+      <aside className="sidebar">
+        <div className="brand brand-with-lily"><img src="/pink-lily.svg" alt="" className="brand-lily" aria-hidden="true"/><span>Meu Look ♡</span></div>
+        <nav className="nav-stack">{items.map(([href,label,Icon]) => <Link key={href} href={href} className={`nav-link ${isActive(path, href) ? 'active' : ''}`}><Icon size={18}/><span>{label}</span></Link>)}</nav>
+      </aside>
+
+      <nav className="mobile-nav" aria-label="Navegação principal">
+        {mobilePrimary.map(([href,label,Icon]) => <Link key={href} href={href} className={`mobile-link ${isActive(path, href) ? 'active' : ''}`}><Icon size={18}/><span>{label}</span></Link>)}
+        <button type="button" className={`mobile-link mobile-more-button ${moreOpen || mobileMore.some(([href]) => isActive(path, href)) ? 'active' : ''}`} onClick={() => setMoreOpen(true)} aria-haspopup="dialog" aria-expanded={moreOpen}>
+          <ChevronUp size={18}/><span>Mais</span>
+        </button>
+      </nav>
+
+      {moreOpen && <div className="more-sheet-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setMoreOpen(false); }}>
+        <section className="more-sheet" role="dialog" aria-modal="true" aria-labelledby="more-title">
+          <div className="section-head"><div><span className="card-kicker">Meu Look</span><h2 className="section-title" id="more-title">Mais</h2></div><button type="button" className="icon-btn" aria-label="Fechar" onClick={() => setMoreOpen(false)}><X size={18}/></button></div>
+          <div className="more-sheet-grid">{mobileMore.map(([href,label,Icon]) => <Link key={href} href={href} className={`more-sheet-link ${isActive(path, href) ? 'active' : ''}`}><Icon size={18}/><span>{label}</span></Link>)}</div>
+        </section>
+      </div>}
+    </>
+  );
 }

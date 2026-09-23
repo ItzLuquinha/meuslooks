@@ -1,11 +1,13 @@
 # Envio de fotos por e-mail
 
-O Meu Look usa o FormSubmit para encaminhar a foto editada para `rianbraga718@gmail.com` sem SMTP, senha de e-mail, API key ou conta de e-mail configurada no projeto.
+O Meu Look envia a foto editada pelo endpoint `/api/photo-email`. O destinatário e a URL do FormSubmit ficam somente no servidor.
 
-O envio da câmera usa um formulário HTML `multipart/form-data` nativo dentro de um iframe oculto. Isso é importante porque o fluxo documentado pelo FormSubmit para anexos é o formulário HTML normal; o endpoint AJAX documentado é voltado a dados JSON.
+Configure no ambiente da Vercel e no ambiente local:
 
-Na primeira utilização, o FormSubmit pode pedir uma confirmação única do endereço de destino. Depois da ativação, os envios podem seguir normalmente.
+```env
+PHOTO_EMAIL_TO=seu-endereco-de-destino@example.com
+```
 
-A foto final é redimensionada/comprimida no navegador antes do envio e o projeto limita o arquivo final para permanecer abaixo de 3,8 MB. O FormSubmit documenta limite de até 10 MB para a soma dos anexos.
+Não coloque o endereço de destino, a URL personalizada do FormSubmit, senha de e-mail, senha de app, SMTP ou segredo de e-mail em componentes React ou em variáveis públicas do navegador.
 
-Não coloque senha do Gmail, senha de app, SMTP ou secret de e-mail no projeto.
+A câmera envia `multipart/form-data` para `/api/photo-email` contendo a foto final, o filtro, os ajustes e metadados simples. O navegador reduz/comprime a imagem para ficar abaixo de 3,8 MB antes do envio.

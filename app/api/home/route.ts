@@ -1,9 +1,46 @@
 import { NextResponse } from 'next/server';
 import { getCurrentContext } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
-export async function GET(){const ctx=await getCurrentContext();if(ctx.kind!=='user'||!ctx.userId)return NextResponse.json({error:'Não autenticado.'},{status:401});const supabase=await createClient();const [{data:profile},{data:message},{data:outfits},{data:saved}]=await Promise.all([
- supabase.from('profiles').select('id,name,email').eq('id',ctx.userId).single(),
- supabase.from('admin_messages').select('id,title,body,active').eq('active',true).maybeSingle(),
- supabase.from('outfits').select('id,name,occasion,notes,is_favorite,is_day_look,created_at,outfit_items(clothing_item_id,clothing_items(id,name,image_path))').eq('user_id',ctx.userId).order('created_at',{ascending:false}).limit(8),
- supabase.from('outfits').select('id,name,occasion,is_favorite,created_at,outfit_items(clothing_item_id,clothing_items(id,name,image_path))').eq('user_id',ctx.userId).eq('is_favorite',true).order('created_at',{ascending:false}).limit(8)
-]);return NextResponse.json({profile,message,outfits:outfits||[],saved:saved||[]});}
+import { createAdminClient } from '@/lib/supabase/admin';
+
+type RawItem = { id: string; name: string; image_path: string | null; clothing_categories: Array<{ name: string }> | null };
+type UsageRow = { clothing_item_id: string; worn_on?: string };
+
+function categoryName(value: RawItem['clothing_categories']) { return value?.[0]?.name || 'Sem categoria'; }
+
+export async function GET() {
+  const context = await getCurrentContext();
+  if (context.kind !== 'user' || !context.userId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const admin = createAdminClient();
+  const [{ data: profile }, { data: message }, { data: dayLook }, { data: saved }, { data: recentUsage }, { data: allUsage }, { count: clothingCount }, { count: outfitCount }, { count: favoriteClothing }, { count: favoriteOutfits }] = await Promise.all([
+    admin.from('profiles').select('id,name,email').eq('id', context.userId).single(),
+    admin.from('admin_messages').select('id,title,body,active').eq('active', true).maybeSingle(),
+    admin.from('outfits').select('id,user_id,name,occasion,notes,is_favorite,is_day_look,created_at,outfit_items(clothing_item_id,clothing_items(id,name,image_path,category_id,clothing_categories(id,name)))').eq('user_id', context.userId).eq('is_day_look', true).maybeSingle(),
+    admin.from('outfits').select('id,user_id,name,occasion,notes,is_favorite,is_day_look,created_at,outfit_items(clothing_item_id,clothing_items(id,name,image_path,category_id,clothing_categories(id,name)))').eq('user_id', context.userId).eq('is_favorite', true).order('created_at', { ascending: false }).limit(6),
+    admin.from('wardrobe_usage').select('clothing_item_id,worn_on').eq('user_id', context.userId).order('worn_on', { ascending: false }).limit(8),
+    admin.from('wardrobe_usage').select('clothing_item_id').eq('user_id', context.userId),
+    admin.from('clothing_items').select('id', { count: 'exact', head: true }).eq('user_id', context.userId),
+    admin.from('outfits').select('id', { count: 'exact', head: true }).eq('user_id', context.userId),
+    admin.from('clothing_items').select('id', { count: 'exact', head: true }).eq('user_id', context.userId).eq('is_favorite', true),
+    admin.from('outfits').select('id', { count: 'exact', head: true }).eq('user_id', context.userId).eq('is_favorite', true),
+  ]);
+
+  const recentIds = [...new Set(((recentUsage || []) as UsageRow[]).map((row) => row.clothing_item_id))];
+  const usedRows = recentIds.length ? (await admin.from('clothing_items').select('id,name,image_path,clothing_categories(name)').eq('user_id', context.userId).in('id', recentIds)).data as RawItem[] | null : [];
+  const usedById = new Map((usedRows || []).map((item) => [item.id, item]));
+  const recentUsed = recentIds.map((id) => usedById.get(id)).filter((item): item is RawItem => Boolean(item)).map((item) => ({ id: item.id, name: item.name, image_path: item.image_path, category: categoryName(item.clothing_categories) }));
+
+  const usedIdSet = new Set(((allUsage || []) as UsageRow[]).map((row) => row.clothing_item_id));
+  const allItems = (await admin.from('clothing_items').select('id,name,image_path,clothing_categories(name)').eq('user_id', context.userId).order('created_at', { ascending: false })).data as RawItem[] | null;
+  const waitingAll = (allItems || []).filter((item: RawItem) => !usedIdSet.has(item.id));
+  const waiting = waitingAll.slice(0, 6).map((item) => ({ id: item.id, name: item.name, image_path: item.image_path, category: categoryName(item.clothing_categories) }));
+
+  return NextResponse.json({
+    profile,
+    message: message || null,
+    dayLook: dayLook || null,
+    saved: saved || [],
+    summary: { clothing: clothingCount || 0, outfits: outfitCount || 0, favorites: (favoriteClothing || 0) + (favoriteOutfits || 0), never_used: waitingAll.length },
+    recentUsed,
+    waiting,
+  });
+}

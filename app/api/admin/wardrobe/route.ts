@@ -29,16 +29,10 @@ export async function POST(req: Request) {
   const file = form.get('image');
   if (file && (!(file instanceof File) || file.size > 8 * 1024 * 1024 || !allowedTypes.has(file.type))) return NextResponse.json({ error: 'Imagem inválida. Use JPG, PNG ou WEBP de até 8 MB.' }, { status: 400 });
   const admin = createAdminClient();
-  let categoryId: string | null = null;
-  const requestedCategoryId = String(form.get('category_id') || '').trim();
-  const category = String(form.get('category') || '').trim();
-  if (requestedCategoryId) {
-    const { data: cat } = await admin.from('clothing_categories').select('id').eq('id', requestedCategoryId).eq('is_active', true).or(`user_id.is.null,user_id.eq.${user.id}`).maybeSingle();
-    if (!cat) return NextResponse.json({ error: 'Categoria inválida.' }, { status: 400 });
-    categoryId = cat.id;
-  } else if (category) {
-    const { data: cat } = await admin.from('clothing_categories').select('id').eq('name', category).eq('is_active', true).or(`user_id.is.null,user_id.eq.${user.id}`).limit(1).maybeSingle();
-    categoryId = cat?.id || null;
+  const categoryId = String(form.get('category_id') || '').trim() || null;
+  if (categoryId) {
+    const { data: category } = await admin.from('clothing_categories').select('id').eq('id', categoryId).eq('is_active', true).or(`user_id.is.null,user_id.eq.${user.id}`).maybeSingle();
+    if (!category) return NextResponse.json({ error: 'Categoria inválida.' }, { status: 400 });
   }
   let imagePath: string | null = null;
   if (file instanceof File && file.size) {
