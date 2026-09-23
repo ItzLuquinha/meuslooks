@@ -4,56 +4,84 @@ import type { ReactNode } from 'react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
-const TRANSITION_MS = 220;
+const TRANSITION_MS = 240;
+
+type Phase = 'idle' | 'prepare' | 'running';
 
 export default function PageTransition({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const lastPathRef = useRef(pathname);
-  const lastChildrenRef = useRef<ReactNode>(children);
+  const pathnameRef = useRef(pathname);
+  const pendingContentRef = useRef<ReactNode | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [outgoing, setOutgoing] = useState<ReactNode | null>(null);
-  const [transitionId, setTransitionId] = useState(0);
+  const frameRef = useRef<number | null>(null);
+  const [currentContent, setCurrentContent] = useState<ReactNode>(children);
+  const [incomingContent, setIncomingContent] = useState<ReactNode | null>(null);
+  const [phase, setPhase] = useState<Phase>('idle');
 
   useLayoutEffect(() => {
-    if (lastPathRef.current === pathname) {
-      lastChildrenRef.current = children;
-      return;
-    }
+    if (pathnameRef.current === pathname) return;
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const previousChildren = lastChildrenRef.current;
+    pathnameRef.current = pathname;
 
-    lastPathRef.current = pathname;
-    lastChildrenRef.current = children;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
 
-    if (timerRef.current) clearTimeout(timerRef.current);
+    pendingContentRef.current = children;
 
     if (reducedMotion) {
-      setOutgoing(null);
+      setCurrentContent(children);
+      setIncomingContent(null);
+      setPhase('idle');
+      pendingContentRef.current = null;
       return;
     }
 
-    setOutgoing(previousChildren);
-    setTransitionId((value) => value + 1);
+    setIncomingContent(children);
+    setPhase('prepare');
 
-    timerRef.current = setTimeout(() => {
-      setOutgoing(null);
-      timerRef.current = null;
-    }, TRANSITION_MS);
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = null;
+        setPhase('running');
+
+        timerRef.current = setTimeout(() => {
+          const nextContent = pendingContentRef.current;
+          if (nextContent !== null) {
+            setCurrentContent(nextContent);
+          }
+          pendingContentRef.current = null;
+          setIncomingContent(null);
+          setPhase('idle');
+          timerRef.current = null;
+        }, TRANSITION_MS);
+      });
+    });
 
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
     };
   }, [pathname, children]);
 
   return (
-    <div className={`page-transition-stage ${outgoing ? 'page-transition-active' : ''}`}>
-      <div key={transitionId} className="page-transition-current">
-        {children}
-      </div>
-      {outgoing && (
-        <div key={`outgoing-${transitionId}`} className="page-transition-outgoing" aria-hidden="true">
-          {outgoing}
+    <div className={`page-transition-stage page-transition-${phase}`}>
+      <div className="page-transition-current">{currentContent}</div>
+      {incomingContent !== null && (
+        <div className="page-transition-incoming" aria-hidden="true">
+          {incomingContent}
         </div>
       )}
     </div>

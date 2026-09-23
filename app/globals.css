@@ -729,31 +729,34 @@ main { min-width: 0; }
   .mobile-nav .mobile-link { flex-basis: 68px; font-size: 9px; }
 }
 
-/* Page crossfade: subtle and shared across the private app tabs. */
+/* Page crossfade: keep the old view mounted until the new view is fully in place. */
 .page-transition-stage { position: relative; min-width: 0; }
-.page-transition-current { position: relative; z-index: 1; }
-.page-transition-outgoing {
+.page-transition-current,
+.page-transition-incoming { min-width: 0; width: 100%; }
+.page-transition-current {
+  position: relative;
+  z-index: 1;
+  opacity: 1;
+}
+.page-transition-incoming {
   position: absolute;
   inset: 0;
   z-index: 2;
+  opacity: 0;
   pointer-events: none;
   user-select: none;
-  animation: page-crossfade-out .22s ease-out both;
+  will-change: opacity;
 }
-.page-transition-active .page-transition-current {
-  animation: page-crossfade-in .22s ease-out both;
+.page-transition-running .page-transition-current,
+.page-transition-running .page-transition-incoming {
+  transition: opacity .24s ease-in-out;
 }
-@keyframes page-crossfade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-@keyframes page-crossfade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
+.page-transition-running .page-transition-current { opacity: 0; pointer-events: none; }
+.page-transition-running .page-transition-incoming { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
-  .page-transition-outgoing,
-  .page-transition-active .page-transition-current { animation: none !important; }
+  .page-transition-stage,
+  .page-transition-current,
+  .page-transition-incoming { transition: none !important; animation: none !important; }
 }
 
 
