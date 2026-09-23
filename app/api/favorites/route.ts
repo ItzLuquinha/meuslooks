@@ -11,6 +11,7 @@ type RawFavoriteItem = {
   clothing_categories: Array<{ id: string; name: string }> | null;
 };
 
+type RawFavoriteOutfitItem = { clothing_item_id: string; clothing_items: RawFavoriteItem[] | null };
 type RawFavoriteOutfit = {
   id: string;
   name: string;
@@ -19,7 +20,7 @@ type RawFavoriteOutfit = {
   is_favorite: boolean;
   is_day_look: boolean;
   created_at: string;
-  outfit_items: Array<{ clothing_item_id: string; clothing_items: RawFavoriteItem | null }> | null;
+  outfit_items: RawFavoriteOutfitItem[] | null;
 };
 
 function categoryValue(value: RawFavoriteItem['clothing_categories']) {
@@ -41,7 +42,7 @@ export async function GET() {
     ...outfit,
     outfit_items: (outfit.outfit_items || []).map((entry) => ({
       ...entry,
-      clothing_items: entry.clothing_items ? { ...entry.clothing_items, clothing_categories: categoryValue(entry.clothing_items.clothing_categories) } : null,
+      clothing_items: entry.clothing_items?.[0] ? { ...entry.clothing_items[0], clothing_categories: categoryValue(entry.clothing_items[0].clothing_categories) } : null,
     })),
   }));
   return NextResponse.json({ items: normalizedItems, outfits: normalizedOutfits });

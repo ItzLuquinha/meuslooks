@@ -4,11 +4,12 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 type RawCategory = { id: string; name: string };
 type RawItem = { id: string; name: string; image_path: string | null; category_id: string | null; clothing_categories: RawCategory[] | null };
-type RawOutfit = { id: string; user_id: string; name: string; occasion: string | null; notes: string | null; is_favorite: boolean; is_day_look: boolean; created_at: string; outfit_items: Array<{ clothing_item_id: string; clothing_items: RawItem | null }> | null };
+type RawOutfitItem = { clothing_item_id: string; clothing_items: RawItem[] | null };
+type RawOutfit = { id: string; user_id: string; name: string; occasion: string | null; notes: string | null; is_favorite: boolean; is_day_look: boolean; created_at: string; outfit_items: RawOutfitItem[] | null };
 
 function uniqueIds(value: unknown) { return Array.isArray(value) ? [...new Set(value.map((id) => String(id)).filter(Boolean))].slice(0, 12) : []; }
 function normalizeCategory(value: RawCategory[] | null) { return value?.[0] ?? null; }
-function normalizeOutfit(outfit: RawOutfit) { return { ...outfit, outfit_items: (outfit.outfit_items || []).map((entry) => ({ ...entry, clothing_items: entry.clothing_items ? { ...entry.clothing_items, clothing_categories: normalizeCategory(entry.clothing_items.clothing_categories) } : null })) }; }
+function normalizeOutfit(outfit: RawOutfit) { return { ...outfit, outfit_items: (outfit.outfit_items || []).map((entry) => ({ ...entry, clothing_items: entry.clothing_items?.[0] ? { ...entry.clothing_items[0], clothing_categories: normalizeCategory(entry.clothing_items[0].clothing_categories) } : null })) }; }
 
 export async function GET() {
   const context = await getCurrentContext();

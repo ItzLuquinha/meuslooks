@@ -10,7 +10,7 @@ type RawClothing = {
   clothing_categories: RawCategory[] | null;
 };
 type RawWear = { id: string; worn_on: string; outfits: Array<{ id: string; name: string }> | null };
-type RawUsage = { clothing_item_id: string; worn_on: string; clothing_items: RawClothing | null };
+type RawUsage = { clothing_item_id: string; worn_on: string; clothing_items: RawClothing[] | null };
 
 function categoryName(value: RawCategory[] | null) { return value?.[0]?.name || 'Sem categoria'; }
 

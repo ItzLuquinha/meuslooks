@@ -34,7 +34,7 @@ export default function OutfitBuilderClient() {
     setItems(clothing.items || []);
     const list = outfits.outfits || [];
     setSaved(list);
-    setDayLook(list.find((outfit) => outfit.is_day_look) || null);
+    setDayLook(list.find((outfit: BuilderOutfit) => outfit.is_day_look) || null);
   }
 
   useEffect(() => { void load().catch((error) => { const text = error instanceof Error ? error.message : 'Não foi possível carregar os looks.'; setMessage(text); showToast(text, 'error'); }); }, [showToast]);
