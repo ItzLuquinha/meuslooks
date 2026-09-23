@@ -58,14 +58,14 @@ export default function LookCameraClient() {
     setCapturedFile(null);
   }, []);
 
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (requestedFacing: 'environment' | 'user' = facing) => {
     stopStream();
     setPaused(false);
     setStarting(true);
     setError('');
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1440 } } });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: requestedFacing }, width: { ideal: 1920 }, height: { ideal: 1440 } } });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -82,6 +82,13 @@ export default function LookCameraClient() {
     if (!capturedUrl && !sent && !paused) void startCamera();
     return () => stopStream();
   }, [capturedUrl, sent, paused, startCamera, stopStream]);
+
+  useEffect(() => {
+    const url = capturedUrl;
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [capturedUrl]);
 
   const previewFilter = useMemo(() => filterCss(filter, adjustments), [filter, adjustments]);
 
@@ -216,7 +223,7 @@ export default function LookCameraClient() {
               <div className="camera-vignette" aria-hidden="true" />
               <div className="camera-guide" aria-hidden="true"><span>Enquadre sua foto</span></div>
               <div className="camera-top-controls">
-                <button type="button" className="camera-control" aria-label="Trocar câmera" onClick={() => setFacing((current) => current === 'environment' ? 'user' : 'environment')} disabled={starting}><FlipHorizontal size={18}/></button>
+                <button type="button" className="camera-control" aria-label="Trocar câmera" onClick={() => { const next = facing === 'environment' ? 'user' : 'environment'; setFacing(next); void startCamera(next); }} disabled={starting}><FlipHorizontal size={18}/></button>
                 <button type="button" className="camera-control" aria-label={paused ? 'Retomar câmera' : 'Pausar câmera'} onClick={togglePause} disabled={starting}><PauseIcon paused={paused}/></button>
               </div>
               {starting && <div className="camera-status">Abrindo câmera…</div>}

@@ -5,11 +5,12 @@ import { Heart, Shirt, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
-import OutfitEditor, { type OutfitEditorItem, type OutfitEditorValue } from '@/components/outfits/OutfitEditor';
+import OutfitEditor, { type OutfitEditorItem, type OutfitSaveValue } from '@/components/outfits/OutfitEditor';
 import { useToast } from '@/components/ui/ToastProvider';
 
 type FavoriteItem = { id: string; name: string; image_path: string | null; is_favorite: boolean; clothing_categories?: { id: string; name: string } | null };
-type FavoriteOutfit = OutfitEditorValue & { id: string; is_favorite: boolean };
+type FavoriteOutfit = OutfitSaveValue & { id: string; is_favorite: boolean };
+
 type Data = { items: FavoriteItem[]; outfits: FavoriteOutfit[] };
 
 export default function FavoritesClient() {
@@ -46,7 +47,7 @@ export default function FavoritesClient() {
     setBusy(false);
   }
 
-  async function saveOutfit(value: OutfitEditorValue) {
+  async function saveOutfit(value: OutfitSaveValue) {
     if (!editing) return;
     setBusy(true);
     const response = await fetch(`/api/outfits/${editing.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
@@ -79,7 +80,7 @@ export default function FavoritesClient() {
       {message && <div className="card inline-message" role="alert">{message}</div>}
       <section className="section">
         <div className="section-head"><h2 className="section-title">Peças favoritas</h2></div>
-        {data.items.length ? <div className="grid">{data.items.map((item) => <article className="card clothing-card" key={item.id}><button className="favorite-btn" aria-label="Desfavoritar" onClick={() => void toggleItem(item)} disabled={busy}><Heart size={17} fill="currentColor"/></button><div className="clothing-image">{item.image_path ? <img src={`/api/media?path=${encodeURIComponent(item.image_path)}`} alt={item.name}/> : <div className="placeholder-art"><Shirt/></div>}</div><div className="clothing-info"><div className="clothing-name">{item.name}</div><div className="clothing-meta">{item.clothing_categories?.name || 'Sem categoria'}</div></div></article>)}</div> : <div className="empty"><Heart className="empty-icon"/><h3 className="empty-title">Nenhuma peça favorita.</h3><p className="empty-copy">Marque uma peça com o coração para ela aparecer aqui.</p></div>}
+        {data.items.length ? <div className="grid">{data.items.map((item) => <article className="card clothing-card" key={item.id}><button className="favorite-btn" aria-label="Desfavoritar" onClick={() => void toggleItem(item)} disabled={busy}><Heart size={17} fill="currentColor"/></button><div className="clothing-image">{item.image_path ? <img src={`/api/media?path=${encodeURIComponent(item.image_path)}`} alt={item.name} loading="lazy" decoding="async"/> : <div className="placeholder-art"><Shirt/></div>}</div><div className="clothing-info"><div className="clothing-name">{item.name}</div><div className="clothing-meta">{item.clothing_categories?.name || 'Sem categoria'}</div></div></article>)}</div> : <div className="empty"><Heart className="empty-icon"/><h3 className="empty-title">Nenhuma peça favorita.</h3><p className="empty-copy">Marque uma peça com o coração para ela aparecer aqui.</p></div>}
       </section>
       <section className="section">
         <div className="section-head"><h2 className="section-title">Looks favoritos</h2></div>

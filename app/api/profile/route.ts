@@ -1,5 +1,24 @@
 import { NextResponse } from 'next/server';
 import { getCurrentContext } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-export async function GET(){const c=await getCurrentContext();if(c.kind!=='user'||!c.userId)return NextResponse.json({error:'Não autenticado.'},{status:401});const s=await createClient();const {data}=await s.from('profiles').select('id,name,email,created_at').eq('id',c.userId).single();return NextResponse.json({profile:data});}
-export async function PATCH(req:Request){const c=await getCurrentContext();if(c.kind!=='user'||!c.userId)return NextResponse.json({error:'Não autenticado.'},{status:401});const b=await req.json().catch(()=>({}));if(typeof b.name!=='string'||b.name.trim().length<1)return NextResponse.json({error:'Nome inválido.'},{status:400});const s=await createClient();const {error}=await s.from('profiles').update({name:b.name.trim()}).eq('id',c.userId);if(error)return NextResponse.json({error:error.message},{status:400});return NextResponse.json({ok:true});}
+
+export async function GET() {
+  const context = await getCurrentContext();
+  if (context.kind !== 'user' || !context.userId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('profiles').select('id,name,email,created_at').eq('id', context.userId).single();
+  if (error) return NextResponse.json({ error: 'Não foi possível carregar seu perfil.' }, { status: 500 });
+  return NextResponse.json({ profile: data });
+}
+
+export async function PATCH(request: Request) {
+  const context = await getCurrentContext();
+  if (context.kind !== 'user' || !context.userId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const body = await request.json().catch(() => ({}));
+  if (typeof body.name !== 'string' || body.name.trim().length < 1) return NextResponse.json({ error: 'Nome inválido.' }, { status: 400 });
+  const name = body.name.trim().slice(0, 80);
+  const supabase = await createClient();
+  const { error } = await supabase.from('profiles').update({ name }).eq('id', context.userId);
+  if (error) return NextResponse.json({ error: 'Não foi possível salvar seu nome.' }, { status: 400 });
+  return NextResponse.json({ ok: true });
+}

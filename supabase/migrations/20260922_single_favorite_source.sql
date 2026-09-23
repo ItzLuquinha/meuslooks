@@ -13,6 +13,8 @@ BEGIN
     WHERE favorite.outfit_id = outfit.id
       AND favorite.user_id = outfit.user_id;
 
-    DROP TABLE public.favorites;
+    IF to_regclass('public.favorites_legacy_20260922') IS NULL THEN
+      ALTER TABLE public.favorites RENAME TO favorites_legacy_20260922;
+    END IF;
   END IF;
 END $$;

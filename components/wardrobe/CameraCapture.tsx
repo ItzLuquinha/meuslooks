@@ -18,7 +18,7 @@ export default function CameraCapture({ onUse, onCancel }: { onUse: (file: File)
     if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
 
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (requestedFacing: 'environment' | 'user' = facing) => {
     stopStream();
     setStarting(true);
     setError('');
@@ -28,7 +28,7 @@ export default function CameraCapture({ onUse, onCancel }: { onUse: (file: File)
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 1600 } }, audio: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: requestedFacing }, width: { ideal: 1280 }, height: { ideal: 1600 } }, audio: false });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -89,5 +89,5 @@ export default function CameraCapture({ onUse, onCancel }: { onUse: (file: File)
     return <div className="camera-wrap"><div className="camera-stage"><img src={previewUrl} alt="Foto capturada" /></div><div className="camera-actions"><button type="button" className="btn btn-ghost" onClick={cancel}><X size={17}/>Cancelar</button><button type="button" className="btn btn-soft" onClick={retake}><RotateCcw size={17}/>Tirar outra</button><button type="button" className="btn btn-primary" onClick={() => { stopStream(); onUse(captured); }}><Check size={17}/>Usar foto</button></div></div>;
   }
 
-  return <div className="camera-wrap"><div className="camera-stage">{starting && <div className="camera-status">Abrindo câmera…</div>}<video ref={videoRef} playsInline muted autoPlay /></div>{error && <div className="card alert-card" role="alert">{error}</div>}<div className="camera-actions"><button type="button" className="btn btn-ghost" onClick={cancel}><X size={17}/>Cancelar</button><button type="button" className="btn btn-primary" onClick={capture} disabled={starting || Boolean(error)}><Camera size={18}/>Capturar</button><button type="button" className="btn btn-soft" onClick={() => setFacing((current) => current === 'environment' ? 'user' : 'environment')} disabled={starting}><RotateCcw size={17}/>Trocar</button></div></div>;
+  return <div className="camera-wrap"><div className="camera-stage">{starting && <div className="camera-status">Abrindo câmera…</div>}<video ref={videoRef} playsInline muted autoPlay /></div>{error && <div className="card alert-card" role="alert">{error}</div>}<div className="camera-actions"><button type="button" className="btn btn-ghost" onClick={cancel}><X size={17}/>Cancelar</button><button type="button" className="btn btn-primary" onClick={capture} disabled={starting || Boolean(error)}><Camera size={18}/>Capturar</button><button type="button" className="btn btn-soft" onClick={() => { const next = facing === 'environment' ? 'user' : 'environment'; setFacing(next); void startCamera(next); }} disabled={starting}><RotateCcw size={17}/>Trocar</button></div></div>;
 }

@@ -110,3 +110,8 @@ A decoração de lírios rosa foi desenhada localmente em SVG em uma direção b
 ## Câmera e e-mail
 
 A aba de câmera permite capturar e editar fotos antes do envio. O e-mail é encaminhado pelo FormSubmit, sem SMTP ou senha de e-mail. A primeira utilização exige a confirmação única do endereço destinatário pelo próprio FormSubmit.
+
+
+## Recuperação de senha
+
+O fluxo usa `/auth/callback` para trocar o código de recuperação do Supabase pela sessão antes de abrir `/auth/redefinir`. Adicione a URL `https://SEU-DOMINIO/auth/callback` nas Redirect URLs do Supabase Authentication.

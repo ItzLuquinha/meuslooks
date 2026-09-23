@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
-const TRANSITION_MS = 240;
+const TRANSITION_MS = 150;
 
 type Phase = 'idle' | 'prepare' | 'running';
 
@@ -47,21 +47,19 @@ export default function PageTransition({ children }: { children: ReactNode }) {
     setPhase('prepare');
 
     frameRef.current = requestAnimationFrame(() => {
-      frameRef.current = requestAnimationFrame(() => {
-        frameRef.current = null;
-        setPhase('running');
+      frameRef.current = null;
+      setPhase('running');
 
-        timerRef.current = setTimeout(() => {
-          const nextContent = pendingContentRef.current;
-          if (nextContent !== null) {
-            setCurrentContent(nextContent);
-          }
-          pendingContentRef.current = null;
-          setIncomingContent(null);
-          setPhase('idle');
-          timerRef.current = null;
-        }, TRANSITION_MS);
-      });
+      timerRef.current = setTimeout(() => {
+        const nextContent = pendingContentRef.current;
+        if (nextContent !== null) {
+          setCurrentContent(nextContent);
+        }
+        pendingContentRef.current = null;
+        setIncomingContent(null);
+        setPhase('idle');
+        timerRef.current = null;
+      }, TRANSITION_MS);
     });
 
     return () => {

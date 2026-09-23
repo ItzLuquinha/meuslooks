@@ -71,7 +71,7 @@ export default function StatsClient() {
 }
 
 function UsageRow({ item }: { item: Stats['most_used'][number] }) {
-  return <div className="usage-row"><div className="usage-thumb">{item.image_path ? <img src={`/api/media?path=${encodeURIComponent(item.image_path)}`} alt=""/> : <Shirt size={18}/>}</div><div className="usage-copy"><strong>{item.name}</strong><span>{item.category}{item.last_used ? ` · último uso ${new Date(`${item.last_used}T12:00:00`).toLocaleDateString('pt-BR')}` : ''}</span></div><div className="usage-count"><strong>{item.count}</strong><span>{item.count === 1 ? 'uso' : 'usos'}</span></div></div>;
+  return <div className="usage-row"><div className="usage-thumb">{item.image_path ? <img src={`/api/media?path=${encodeURIComponent(item.image_path)}`} alt="" loading="lazy" decoding="async"/> : <Shirt size={18}/>}</div><div className="usage-copy"><strong>{item.name}</strong><span>{item.category}{item.last_used ? ` · último uso ${new Date(`${item.last_used}T12:00:00`).toLocaleDateString('pt-BR')}` : ''}</span></div><div className="usage-count"><strong>{item.count}</strong><span>{item.count === 1 ? 'uso' : 'usos'}</span></div></div>;
 }
 function StatCard({ icon, label, value }: { icon: ReactNode; label: string; value: number }) { return <div className="card stat-card"><div className="stat-icon">{icon}</div><span>{label}</span><strong>{value}</strong></div>; }
 function StatsPanel({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) { return <div className="card stats-panel"><div className="section-head"><div><h2 className="section-title">{title}</h2><p className="page-subtitle">{subtitle}</p></div></div>{children}</div>; }

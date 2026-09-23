@@ -31,12 +31,12 @@ export async function GET() {
   const context = await currentUser();
   if (!context) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
   const admin = createAdminClient();
-  const [{ data: items, error: itemsError }, { data: categories, error: categoriesError }, { data: usage }] = await Promise.all([
+  const [{ data: items, error: itemsError }, { data: categories, error: categoriesError }, { data: usage, error: usageError }] = await Promise.all([
     admin.from('clothing_items').select('*,clothing_categories(id,name,is_active)').eq('user_id', context.userId).order('created_at', { ascending: false }),
     admin.from('clothing_categories').select('id,name,is_active,user_id').or(`user_id.is.null,user_id.eq.${context.userId}`).eq('is_active', true).order('name'),
     admin.from('wardrobe_usage').select('clothing_item_id,worn_on').eq('user_id', context.userId).order('worn_on', { ascending: false }),
   ]);
-  if (itemsError || categoriesError) return NextResponse.json({ error: 'Não foi possível carregar o guarda-roupa.' }, { status: 500 });
+  if (itemsError || categoriesError || usageError) return NextResponse.json({ error: 'Não foi possível carregar o guarda-roupa. Verifique se a migration de histórico do calendário foi aplicada no Supabase.' }, { status: 500 });
 
   const usageMap = new Map<string, { count: number; last_used: string | null }>();
   for (const row of (usage || []) as UsageRow[]) {
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
     season: String(form.get('season') || '').trim() || null,
     notes: String(form.get('notes') || '').trim() || null,
     image_path: path,
-    is_favorite: ['on', 'true', '1'].includes(String(form.get('favorite') || '').toLowerCase()),
+    is_favorite: ['on', 'true', '1'].includes(String(form.get('is_favorite') ?? form.get('favorite') ?? '').toLowerCase()),
   }).select('*,clothing_categories(id,name,is_active)').single();
 
   if (error) {

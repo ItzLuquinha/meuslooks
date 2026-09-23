@@ -75,7 +75,9 @@ create index if not exists clothing_items_user_id_idx on public.clothing_items(u
 create index if not exists outfits_user_id_idx on public.outfits(user_id);
 create index if not exists outfit_items_outfit_idx on public.outfit_items(outfit_id);
 create index if not exists outfit_items_item_idx on public.outfit_items(clothing_item_id);
+create unique index if not exists outfits_one_day_look_per_user on public.outfits(user_id) where is_day_look=true;
 create unique index if not exists active_admin_message_unique on public.admin_messages((active)) where active=true;
+create unique index if not exists clothing_categories_global_name_unique on public.clothing_categories(lower(trim(name))) where user_id is null;
 
 alter table public.profiles enable row level security;
 alter table public.private_credentials enable row level security;
@@ -115,9 +117,15 @@ create policy messages_auth_read on public.admin_messages for select to authenti
 
 -- private_credentials intentionally has no authenticated policy. Server-side admin operations use the service role.
 
-insert into public.clothing_categories (user_id,name) values
-(null,'Camisetas'),(null,'Blusas'),(null,'Camisas'),(null,'Croppeds'),(null,'Vestidos'),(null,'Saias'),(null,'Shorts'),(null,'Calças'),(null,'Jeans'),(null,'Casacos'),(null,'Jaquetas'),(null,'Moletons'),(null,'Pijamas'),(null,'Roupas íntimas'),(null,'Lingerie'),(null,'Sutiãs'),(null,'Calcinhas'),(null,'Meias'),(null,'Sapatos'),(null,'Tênis'),(null,'Sandálias'),(null,'Botas'),(null,'Bolsas'),(null,'Acessórios'),(null,'Outros')
-on conflict do nothing;
+insert into public.clothing_categories (user_id,name)
+select null, name
+from (values
+  ('Camisetas'),('Blusas'),('Camisas'),('Croppeds'),('Vestidos'),('Saias'),('Shorts'),('Calças'),('Jeans'),('Casacos'),('Jaquetas'),('Moletons'),('Pijamas'),('Roupas íntimas'),('Lingerie'),('Sutiãs'),('Calcinhas'),('Meias'),('Sapatos'),('Tênis'),('Sandálias'),('Botas'),('Bolsas'),('Acessórios'),('Outros')
+) as seed(name)
+where not exists (
+  select 1 from public.clothing_categories existing
+  where existing.user_id is null and lower(trim(existing.name)) = lower(trim(seed.name))
+);
 
 insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types)
 values ('clothing','clothing',false,8388608,array['image/jpeg','image/png','image/webp'])

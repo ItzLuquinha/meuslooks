@@ -1,27 +1,28 @@
-# Meu Look — auditoria da implementação do prompt
+# Meu Look — Código e estabilidade auditados
 
-A implementação foi feita como evolução incremental sobre a estrutura existente.
+## Principais correções desta versão
 
-## Validações estáticas
+- O envio da câmera agora resolve o destinatário server-side por `PHOTO_EMAIL_TO`, `ADMIN_EMAIL` ou pelo primeiro perfil admin ativo de `public.profiles`. O destinatário não é exposto ao cliente.
+- O endpoint de e-mail valida o destinatário, trata multipart inválido, valida MIME/tamanho e aborta uma chamada externa que passe de 15 segundos.
+- A recuperação de senha agora usa `/auth/callback` para transformar o código/token do Supabase em sessão antes de abrir a tela de redefinição.
+- O fluxo de troca de câmera foi corrigido tanto na câmera principal quanto na câmera usada ao cadastrar roupa: trocar a câmera agora realmente reinicia o stream com a `facingMode` escolhida.
+- Histórico de uso do guarda-roupa não é mais silenciosamente ignorado quando a tabela/migration está faltando; o endpoint retorna erro explícito.
+- Operações do calendário passaram a verificar erros ao remover o histórico de uso, evitando registros órfãos ou contagens incorretas.
+- O banco passa a impedir múltiplos Looks do Dia para a mesma usuária.
+- Favoritos legados são migrados para `is_favorite` e arquivados, sem exclusão silenciosa.
+- Categorias globais recebem unicidade case-insensitive e duplicatas existentes são consolidadas, mantendo `category_id` válido nas peças.
+- Tipagens das relações do Supabase foram endurecidas nas áreas anteriormente quebradas pelo build.
+- Foram adicionados tratamentos de erro e rollback nos fluxos de calendário/home/admin já identificados como frágeis.
 
-- 98 arquivos `.ts`/`.tsx` foram processados com o TypeScript `transpileModule`: 0 diagnósticos de sintaxe/transpilação.
-- A aplicação não contém acesso à tabela legada `favorites` fora da migration de migração/remoção.
-- O envio da câmera no cliente usa somente `/api/photo-email`; o destinatário e o FormSubmit ficam no servidor via `PHOTO_EMAIL_TO`.
-- A criação/edição de peças usa `category_id`/UUID; o nome da categoria permanece apenas para apresentação.
-- `app/api/stats/route.ts` usa relações Supabase como array (`?.[0]?.name`), evitando o erro de TypeScript que aparecia no deploy.
-- Foi adicionado o bloco de estatísticas de peças com 1–2 usos, excluindo as nunca usadas.
-- A navegação mobile foi reduzida para quatro itens principais + `Mais`, com menu para Estatísticas, Câmera e Configurações.
-- Foi criado um sistema compartilhado de toast para `success`, `error` e `info`.
-- A responsividade mantém viewport `device-width`, `viewportFit: cover`, safe-area na navegação e regras específicas para 700px e 390px.
-- `.env.local` e demais arquivos `.env` continuam ignorados e não fazem parte deste pacote.
+## Verificações estáticas
 
-## Banco
+- 100 arquivos `.ts/.tsx` de aplicação foram transpilados com TypeScript sem diagnostics de sintaxe.
+- Imports locais usados em `.ts/.tsx` foram verificados sem referências inexistentes.
+- Referências `fetch('/api/...')` apontaram para rotas existentes.
+- Nenhum componente cliente contém `formsubmit.co` ou destinatário de e-mail.
+- Não há acesso direto à tabela legada `favorites` fora das migrations.
+- `app/globals.css` passou na checagem básica de balanceamento de chaves.
 
-Foram mantidas as tabelas de histórico `outfit_wears` e `wardrobe_usage`.
-Foi adicionada uma migration para migrar favoritos legados para `is_favorite` e só então remover a tabela `favorites`.
+## Limitação
 
-## Verificação de dependências
-
-`npm run typecheck`, `npm run lint` e `npm run build` dependem das dependências npm instaladas. Nesta execução isolada não foi possível instalar o `node_modules` do projeto: `npm install --ignore-scripts` excedeu o tempo disponível do ambiente. Por isso não foi marcado um build completo como aprovado. O build da Vercel deverá ser a validação final com as dependências reais do projeto.
-
-Também foi ajustado o `eslint` para a linha 9.x compatível com `eslint-config-next` 16.3.5, eliminando o conflito de peer dependency que aparecia no deploy.
+O `npm install` não concluiu no ambiente isolado usado para a auditoria, então não foi possível executar de forma confiável `npm run typecheck`, `npm run lint` e `npm run build` completos neste ambiente. A checagem do build precisa continuar na Vercel após o push.

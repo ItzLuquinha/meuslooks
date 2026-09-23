@@ -3,6 +3,12 @@ import { getCurrentContext } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidDate(value: string) {
+  if (!datePattern.test(value)) return false;
+  const date = new Date(`${value}T12:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
 type CalendarItem = { clothing_item_id: string };
 
 type CalendarOutfit = {
@@ -48,14 +54,17 @@ export async function POST(request: Request) {
   const outfitId = String(body.outfit_id || '');
   const wornOn = String(body.worn_on || '');
   const note = String(body.note || '').trim().slice(0, 240) || null;
-  if (!outfitId || !datePattern.test(wornOn)) return NextResponse.json({ error: 'Escolha um look e uma data válida.' }, { status: 400 });
+  if (!outfitId || !isValidDate(wornOn)) return NextResponse.json({ error: 'Escolha um look e uma data válida.' }, { status: 400 });
   const admin = createAdminClient();
   const { data: outfit } = await admin.from('outfits').select('id,user_id,outfit_items(clothing_item_id)').eq('id', outfitId).eq('user_id', context.userId).maybeSingle();
   if (!outfit) return NextResponse.json({ error: 'Look não encontrado.' }, { status: 404 });
   const { data: existing } = await admin.from('outfit_wears').select('id').eq('user_id', context.userId).eq('worn_on', wornOn).maybeSingle();
   if (existing) return NextResponse.json({ error: 'Já existe um look registrado nesse dia.' }, { status: 409 });
   const { data: entry, error } = await admin.from('outfit_wears').insert({ user_id: context.userId, outfit_id: outfitId, worn_on: wornOn, note }).select('id,outfit_id,worn_on,note').single();
-  if (error || !entry) return NextResponse.json({ error: 'Não foi possível registrar o look.' }, { status: 500 });
+  if (error || !entry) {
+    if (error?.code === '23505') return NextResponse.json({ error: 'Já existe um registro para esse dia.' }, { status: 409 });
+    return NextResponse.json({ error: 'Não foi possível registrar o look.' }, { status: 500 });
+  }
   if (!(await hydrateUsage(admin, context.userId, outfitId, wornOn))) {
     await admin.from('outfit_wears').delete().eq('id', entry.id).eq('user_id', context.userId);
     return NextResponse.json({ error: 'Não foi possível atualizar o histórico das peças.' }, { status: 500 });
@@ -71,7 +80,7 @@ export async function PATCH(request: Request) {
   const outfitId = String(body.outfit_id || '');
   const wornOn = String(body.worn_on || '');
   const note = String(body.note || '').trim().slice(0, 240) || null;
-  if (!id || !outfitId || !datePattern.test(wornOn)) return NextResponse.json({ error: 'Registro inválido.' }, { status: 400 });
+  if (!id || !outfitId || !isValidDate(wornOn)) return NextResponse.json({ error: 'Registro inválido.' }, { status: 400 });
   const admin = createAdminClient();
   const { data: current } = await admin.from('outfit_wears').select('id,outfit_id,worn_on,note').eq('id', id).eq('user_id', context.userId).maybeSingle();
   if (!current) return NextResponse.json({ error: 'Registro não encontrado.' }, { status: 404 });
@@ -82,7 +91,11 @@ export async function PATCH(request: Request) {
 
   const { error: updateError } = await admin.from('outfit_wears').update({ outfit_id: outfitId, worn_on: wornOn, note }).eq('id', id).eq('user_id', context.userId);
   if (updateError) return NextResponse.json({ error: 'Não foi possível atualizar o registro.' }, { status: 500 });
-  await admin.from('wardrobe_usage').delete().eq('user_id', context.userId).eq('outfit_id', current.outfit_id).eq('worn_on', current.worn_on);
+  const { error: oldUsageDeleteError } = await admin.from('wardrobe_usage').delete().eq('user_id', context.userId).eq('outfit_id', current.outfit_id).eq('worn_on', current.worn_on);
+  if (oldUsageDeleteError) {
+    await admin.from('outfit_wears').update({ outfit_id: current.outfit_id, worn_on: current.worn_on, note: current.note }).eq('id', id).eq('user_id', context.userId);
+    return NextResponse.json({ error: 'Não foi possível atualizar o histórico das peças.' }, { status: 500 });
+  }
   if (!(await hydrateUsage(admin, context.userId, outfitId, wornOn))) {
     await admin.from('outfit_wears').update({ outfit_id: current.outfit_id, worn_on: current.worn_on, note: current.note }).eq('id', id).eq('user_id', context.userId);
     await hydrateUsage(admin, context.userId, current.outfit_id, current.worn_on);
@@ -99,7 +112,8 @@ export async function DELETE(request: Request) {
   const admin = createAdminClient();
   const { data: entry } = await admin.from('outfit_wears').select('id,outfit_id,worn_on').eq('id', id).eq('user_id', context.userId).maybeSingle();
   if (!entry) return NextResponse.json({ error: 'Registro não encontrado.' }, { status: 404 });
-  await admin.from('wardrobe_usage').delete().eq('user_id', context.userId).eq('outfit_id', entry.outfit_id).eq('worn_on', entry.worn_on);
+  const { error: usageDeleteError } = await admin.from('wardrobe_usage').delete().eq('user_id', context.userId).eq('outfit_id', entry.outfit_id).eq('worn_on', entry.worn_on);
+  if (usageDeleteError) return NextResponse.json({ error: 'Não foi possível remover o histórico das peças.' }, { status: 500 });
   const { error } = await admin.from('outfit_wears').delete().eq('id', id).eq('user_id', context.userId);
   if (error) return NextResponse.json({ error: 'Não foi possível remover o registro.' }, { status: 500 });
   return NextResponse.json({ ok: true });

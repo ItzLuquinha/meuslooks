@@ -46,7 +46,7 @@ export default function HomeClient() {
         <div className="home-quick-actions">
           <Link className="quick-action" href="/guarda-roupa"><span><Plus size={18}/></span><div><strong>Adicionar peça</strong><small>Atualize seu guarda-roupa</small></div><ArrowRight size={16}/></Link>
           <Link className="quick-action" href="/look-do-dia"><span><Shirt size={18}/></span><div><strong>Montar look</strong><small>Crie uma nova composição</small></div><ArrowRight size={16}/></Link>
-          <Link className="quick-action" href="/calendario"><span><CalendarDays size={18}/></span><div><strong>Registrar uso</strong><small>Guarde o que você vestiu</small></div><ArrowRight size={16}/></Link>
+          <Link className="quick-action quick-action-secondary" href="/calendario"><span><CalendarDays size={18}/></span><div><strong>Registrar uso</strong><small>Guarde o que você vestiu</small></div><ArrowRight size={16}/></Link>
         </div>
       </section>
 
@@ -60,11 +60,11 @@ export default function HomeClient() {
       <section className="section home-content-grid">
         <div className="card home-list-panel">
           <div className="section-head"><div><h2 className="section-title">Usados recentemente</h2><p className="page-subtitle">Peças que apareceram nos últimos registros.</p></div><Link className="text-link" href="/calendario">Ver calendário</Link></div>
-          {data.recentUsed.length ? <div className="home-piece-list">{data.recentUsed.map((item) => <Link href="/guarda-roupa" className="home-piece-row" key={item.id}><div className="home-piece-thumb">{item.image_path ? <img src={imageUrl(item.image_path)} alt=""/> : <Shirt size={17}/>}</div><div><strong>{item.name}</strong><span>{item.category}</span></div><ArrowRight size={15}/></Link>)}</div> : <div className="compact-empty">Ainda não há registros de uso.</div>}
+          {data.recentUsed.length ? <div className="home-piece-list">{data.recentUsed.map((item) => <Link href="/guarda-roupa" className="home-piece-row" key={item.id}><div className="home-piece-thumb">{item.image_path ? <img src={imageUrl(item.image_path)} alt="" loading="lazy" decoding="async"/> : <Shirt size={17}/>}</div><div><strong>{item.name}</strong><span>{item.category}</span></div><ArrowRight size={15}/></Link>)}</div> : <div className="compact-empty">Ainda não há registros de uso.</div>}
         </div>
         <div className="card home-list-panel">
           <div className="section-head"><div><h2 className="section-title">Esperando sua vez</h2><p className="page-subtitle">Peças que ainda não aparecem no histórico.</p></div><Link className="text-link" href="/guarda-roupa">Ver guarda-roupa</Link></div>
-          {data.waiting.length ? <div className="home-piece-list">{data.waiting.map((item) => <Link href="/guarda-roupa" className="home-piece-row" key={item.id}><div className="home-piece-thumb">{item.image_path ? <img src={imageUrl(item.image_path)} alt=""/> : <Shirt size={17}/>}</div><div><strong>{item.name}</strong><span>{item.category}</span></div><Heart size={15}/></Link>)}</div> : <div className="compact-empty">Todas as peças já foram usadas pelo menos uma vez.</div>}
+          {data.waiting.length ? <div className="home-piece-list">{data.waiting.map((item) => <Link href="/guarda-roupa" className="home-piece-row" key={item.id}><div className="home-piece-thumb">{item.image_path ? <img src={imageUrl(item.image_path)} alt="" loading="lazy" decoding="async"/> : <Shirt size={17}/>}</div><div><strong>{item.name}</strong><span>{item.category}</span></div><Heart size={15}/></Link>)}</div> : <div className="compact-empty">Todas as peças já foram usadas pelo menos uma vez.</div>}
         </div>
       </section>
 
@@ -81,5 +81,5 @@ function OutfitPreview({ outfit }: { outfit: Outfit }) {
 }
 
 function OutfitCard({ outfit }: { outfit: Outfit }) {
-  return <article className="card outfit-card"><div className="outfit-preview">{(outfit.outfit_items || []).slice(0,3).map((entry) => entry.clothing_items?.image_path ? <img key={entry.clothing_item_id} src={imageUrl(entry.clothing_items.image_path)} alt=""/> : null)}{!(outfit.outfit_items || []).length && <div className="outfit-placeholder"><Shirt/></div>}</div><div className="outfit-info"><div className="outfit-title">{outfit.name}</div><div className="outfit-meta">{outfit.occasion || 'Sem ocasião'}{outfit.is_favorite ? ' · Favorito' : ''}</div></div></article>;
+  return <article className="card outfit-card"><div className="outfit-preview">{(outfit.outfit_items || []).slice(0,3).map((entry) => entry.clothing_items?.image_path ? <img key={entry.clothing_item_id} src={imageUrl(entry.clothing_items.image_path)} alt="" loading="lazy" decoding="async"/> : null)}{!(outfit.outfit_items || []).length && <div className="outfit-placeholder"><Shirt/></div>}</div><div className="outfit-info"><div className="outfit-title">{outfit.name}</div><div className="outfit-meta">{outfit.occasion || 'Sem ocasião'}{outfit.is_favorite ? ' · Favorito' : ''}</div></div></article>;
 }

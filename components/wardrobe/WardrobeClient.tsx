@@ -86,18 +86,25 @@ export default function WardrobeClient() {
     setMessage('');
     const form = new FormData(event.currentTarget);
     form.set('image', photo);
-    const response = await fetch('/api/clothing', { method: 'POST', body: form });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const text = data.error || 'Não foi possível salvar essa peça.';
+    try {
+      const response = await fetch('/api/clothing', { method: 'POST', body: form });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const text = data.error || 'Não foi possível salvar essa peça.';
+        setMessage(text);
+        showToast(text, 'error');
+      } else {
+        closeAdd();
+        await load();
+        showToast('Peça adicionada', 'success');
+      }
+    } catch {
+      const text = 'Não foi possível salvar essa peça agora. Verifique sua conexão e tente novamente.';
       setMessage(text);
       showToast(text, 'error');
-    } else {
-      closeAdd();
-      await load();
-      showToast('Peça adicionada', 'success');
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function saveEdit(event: FormEvent<HTMLFormElement>) {
@@ -223,7 +230,7 @@ export default function WardrobeClient() {
                   <Heart size={17} fill={item.is_favorite ? 'currentColor' : 'none'} />
                 </button>
                 <div className="clothing-image">
-                  {item.image_path ? <img src={`/api/media?path=${encodeURIComponent(item.image_path)}`} alt={item.name}/> : <div className="placeholder-art"><Shirt/></div>}
+                  {item.image_path ? <img src={`/api/media?path=${encodeURIComponent(item.image_path)}`} alt={item.name} loading="lazy" decoding="async"/> : <div className="placeholder-art"><Shirt/></div>}
                 </div>
                 <div className="clothing-info">
                   <div className="clothing-name">{item.name}</div>
