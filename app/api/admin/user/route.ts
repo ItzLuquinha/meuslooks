@@ -37,6 +37,26 @@ export async function DELETE() {
   const user = await getSelectedAdminUser();
   if (!user) return NextResponse.json({ error: 'Selecione uma usuária.' }, { status: 400 });
   const admin = createAdminClient();
+
+  // Remove stored wardrobe media before deleting the user so the private
+  // storage bucket does not retain orphaned files.
+  const storage = admin.storage.from('clothing');
+  const pathsToDelete: string[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data: files, error: listError } = await storage.list(user.id, { limit: 1000, offset });
+    if (listError) return NextResponse.json({ error: 'Não foi possível preparar a exclusão dos arquivos da conta.' }, { status: 500 });
+    const fileNames = (files || []).filter((file) => Boolean(file.name)).map((file) => `${user.id}/${file.name}`);
+    pathsToDelete.push(...fileNames);
+    if (!files || files.length < 1000) break;
+  }
+  if (pathsToDelete.length) {
+    for (let offset = 0; offset < pathsToDelete.length; offset += 100) {
+      const batch = pathsToDelete.slice(offset, offset + 100);
+      const { error: storageError } = await storage.remove(batch);
+      if (storageError) return NextResponse.json({ error: 'Não foi possível remover todos os arquivos da conta.' }, { status: 500 });
+    }
+  }
+
   const { error } = await admin.auth.admin.deleteUser(user.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   const response = NextResponse.json({ ok: true });

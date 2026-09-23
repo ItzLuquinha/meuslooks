@@ -58,36 +58,42 @@ export default function AdminWardrobeClient() {
     event.preventDefault();
     if(!add.name.trim()) return;
     setBusy(true); setMessage('');
-    const body=new FormData();
-    for(const [key,value] of Object.entries(add)) body.set(key,key==='is_favorite'?(value?'true':'false'):String(value));
-    body.set('favorite',add.is_favorite?'true':'false');
-    if(file)body.set('image',file);
-    const response=await fetch('/api/admin/wardrobe',{method:'POST',body});
-    const data=await response.json().catch(()=>({}));
-    if(response.ok){closeAdd();await load();showToast('Peça adicionada','success');}
-    else{const text=data.error||'Não foi possível adicionar a peça.';setMessage(text);showToast(text,'error');}
-    setBusy(false);
+    try {
+      const body=new FormData();
+      for(const [key,value] of Object.entries(add)) body.set(key,key==='is_favorite'?(value?'true':'false'):String(value));
+      body.set('favorite',add.is_favorite?'true':'false');
+      if(file)body.set('image',file);
+      const response=await fetch('/api/admin/wardrobe',{method:'POST',body});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error(data.error||'Não foi possível adicionar a peça.');
+      closeAdd();await load();showToast('Peça adicionada','success');
+    } catch(error) { const text=error instanceof Error?error.message:'Não foi possível adicionar a peça.'; setMessage(text); showToast(text,'error'); }
+    finally { setBusy(false); }
   }
 
   async function submitEdit(event:FormEvent<HTMLFormElement>){
     event.preventDefault(); if(!edit)return;
     setBusy(true);
-    const form=new FormData(event.currentTarget); const payload=Object.fromEntries(form.entries());
-    const response=await fetch(`/api/admin/wardrobe/${edit.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,category_id:String(payload.category_id||'')||null,is_favorite:form.get('is_favorite')==='on'})});
-    const data=await response.json().catch(()=>({}));
-    if(response.ok){setEdit(null);await load();showToast('Peça atualizada','success');}
-    else showToast(data.error||'Não foi possível atualizar a peça.','error');
-    setBusy(false);
+    try {
+      const form=new FormData(event.currentTarget); const payload=Object.fromEntries(form.entries());
+      const response=await fetch(`/api/admin/wardrobe/${edit.id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,category_id:String(payload.category_id||'')||null,is_favorite:form.get('is_favorite')==='on'})});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error(data.error||'Não foi possível atualizar a peça.');
+      setEdit(null);await load();showToast('Peça atualizada','success');
+    } catch(error) { showToast(error instanceof Error?error.message:'Não foi possível atualizar a peça.','error'); }
+    finally { setBusy(false); }
   }
 
   async function deleteItem(){
     if(!remove)return;
     setBusy(true);
-    const response=await fetch(`/api/admin/wardrobe/${remove.id}`,{method:'DELETE'});
-    const data=await response.json().catch(()=>({}));
-    if(response.ok){setItems((current)=>current.filter((item)=>item.id!==remove.id));setRemove(null);showToast('Peça excluída','success');}
-    else showToast(data.error||'Não foi possível excluir a peça.','error');
-    setBusy(false);
+    try {
+      const response=await fetch(`/api/admin/wardrobe/${remove.id}`,{method:'DELETE'});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error(data.error||'Não foi possível excluir a peça.');
+      setItems((current)=>current.filter((item)=>item.id!==remove.id));setRemove(null);showToast('Peça excluída','success');
+    } catch(error) { showToast(error instanceof Error?error.message:'Não foi possível excluir a peça.','error'); }
+    finally { setBusy(false); }
   }
 
   return <>

@@ -9,20 +9,27 @@ export async function POST(request: Request) {
   const context = await getCurrentContext();
   if (context.kind !== 'user' || !context.userId) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
 
-  let recipient = (process.env.PHOTO_EMAIL_TO || process.env.ADMIN_EMAIL || '').trim();
+  let recipient = [process.env.PHOTO_EMAIL_TO, process.env.ADMIN_EMAIL]
+    .map((value) => String(value || '').trim())
+    .find((value) => /^\S+@\S+\.\S+$/.test(value)) || '';
   if (!recipient) {
-    const admin = createAdminClient();
-    const { data: adminProfile } = await admin
-      .from('profiles')
-      .select('email')
-      .eq('role', 'admin')
-      .eq('is_blocked', false)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    recipient = String(adminProfile?.email || '').trim();
+    try {
+      const admin = createAdminClient();
+      const { data: adminProfile, error: adminProfileError } = await admin
+        .from('profiles')
+        .select('email')
+        .eq('role', 'admin')
+        .eq('is_blocked', false)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (!adminProfileError) {
+        const candidate = String(adminProfile?.email || '').trim();
+        if (/^\S+@\S+\.\S+$/.test(candidate)) recipient = candidate;
+      }
+    } catch {}
   }
-  if (!/^\S+@\S+\.\S+$/.test(recipient)) return NextResponse.json({ error: 'Não foi possível definir o destinatário do envio. Configure PHOTO_EMAIL_TO/ADMIN_EMAIL ou mantenha um perfil admin válido no Supabase.' }, { status: 503 });
+  if (!recipient) return NextResponse.json({ error: 'Envio de e-mail não configurado. Configure PHOTO_EMAIL_TO ou ADMIN_EMAIL na Vercel, ou mantenha um perfil admin com e-mail válido no Supabase.' }, { status: 503 });
 
   let form: FormData;
   try {

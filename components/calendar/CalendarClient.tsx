@@ -61,34 +61,47 @@ export default function CalendarClient() {
 
   async function submitWear(event: FormEvent<HTMLFormElement>, mode: 'create' | 'edit') {
     event.preventDefault();
+    if (mode === 'edit' && !editing) {
+      showToast('Não foi possível identificar o registro.', 'error');
+      return;
+    }
     setBusy(true);
     setMessage('');
-    const form = new FormData(event.currentTarget);
-    const payload = { outfit_id: String(form.get('outfit_id') || ''), worn_on: String(form.get('worn_on') || ''), note: String(form.get('note') || '') };
-    if (mode === 'edit' && !editing) return;
-    const response = await fetch('/api/calendar', { method: mode === 'edit' ? 'PATCH' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(mode === 'edit' ? { ...payload, id: editing?.id } : payload) });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const text = data.error || 'Não foi possível salvar o registro.';
-      setMessage(text);
-      showToast(text, 'error');
-    } else {
+    try {
+      const form = new FormData(event.currentTarget);
+      const payload = { outfit_id: String(form.get('outfit_id') || ''), worn_on: String(form.get('worn_on') || ''), note: String(form.get('note') || '') };
+      const response = await fetch('/api/calendar', { method: mode === 'edit' ? 'PATCH' : 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(mode === 'edit' ? { ...payload, id: editing?.id } : payload) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível salvar o registro.');
       setAdding(false);
       setEditing(null);
       await load();
       showToast(mode === 'edit' ? 'Registro atualizado' : 'Look registrado no calendário', 'success');
+    } catch (error) {
+      const text = error instanceof Error ? error.message : 'Não foi possível salvar o registro.';
+      setMessage(text);
+      showToast(text, 'error');
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function removeEntry() {
     if (!deleting) return;
     setBusy(true);
-    const response = await fetch('/api/calendar', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id: deleting.id }) });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) showToast(data.error || 'Não foi possível remover o registro.', 'error');
-    else { setDeleting(null); setSelectedId(null); await load(); showToast('Registro removido', 'success'); }
-    setBusy(false);
+    try {
+      const response = await fetch('/api/calendar', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id: deleting.id }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível remover o registro.');
+      setDeleting(null);
+      setSelectedId(null);
+      await load();
+      showToast('Registro removido', 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível remover o registro.', 'error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

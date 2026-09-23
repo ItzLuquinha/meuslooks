@@ -107,7 +107,7 @@ export default function SettingsClient() {
           </form>
         </section>
 
-        <section className="section"><div className="card form-card"><strong>Sobre</strong><p className="page-subtitle" style={{ marginTop: 7 }}>Meu Look · versão 1.0.0</p><button type="button" className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => void logout}><LogOut size={16}/>Sair</button></div></section>
+        <section className="section"><div className="card form-card"><strong>Sobre</strong><p className="page-subtitle" style={{ marginTop: 7 }}>Meu Look · versão 1.0.0</p><button type="button" className="btn btn-ghost" style={{ marginTop: 12 }} onClick={() => void logout()}><LogOut size={16}/>Sair</button></div></section>
       </>}
     </>
   );

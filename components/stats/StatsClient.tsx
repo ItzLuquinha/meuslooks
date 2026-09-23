@@ -14,17 +14,22 @@ export default function StatsClient() {
 
   async function load() {
     setLoading(true);
-    const response = await fetch('/api/stats', { cache: 'no-store' });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const text = data.error || 'Não foi possível carregar as estatísticas.';
+    try {
+      const response = await fetch('/api/stats', { cache: 'no-store' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível carregar as estatísticas.');
+      setStats(data as Stats);
+      setMessage('');
+    } catch (error) {
+      const text = error instanceof Error ? error.message : 'Não foi possível carregar as estatísticas.';
       setMessage(text);
       showToast(text, 'error');
-    } else setStats(data as Stats);
-    setLoading(false);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [showToast]);
 
   if (loading) return <><PageHeader/><div className="empty section">Carregando…</div></>;
 

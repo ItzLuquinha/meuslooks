@@ -56,7 +56,7 @@ export default function WardrobeClient() {
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [showToast]);
 
   const filtered = filter === 'all' ? items : items.filter((item) => item.category_id === filter);
   const photoUrl = useMemo(() => photo ? URL.createObjectURL(photo) : null, [photo]);
@@ -112,62 +112,68 @@ export default function WardrobeClient() {
     if (!editing) return;
     setBusy(true);
     setMessage('');
-    const form = new FormData(event.currentTarget);
-    const payload = Object.fromEntries(form.entries());
-    const response = await fetch(`/api/clothing/${editing.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...payload,
-        category_id: String(payload.category_id || '') || null,
-        is_favorite: form.get('is_favorite') === 'on',
-      }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const text = data.error || 'Não foi possível atualizar essa peça.';
-      setMessage(text);
-      showToast(text, 'error');
-    } else {
+    try {
+      const form = new FormData(event.currentTarget);
+      const payload = Object.fromEntries(form.entries());
+      const response = await fetch(`/api/clothing/${editing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...payload,
+          category_id: String(payload.category_id || '') || null,
+          is_favorite: form.get('is_favorite') === 'on',
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível atualizar essa peça.');
       setEditing(null);
       await load();
       showToast('Peça atualizada', 'success');
+    } catch (error) {
+      const text = error instanceof Error ? error.message : 'Não foi possível atualizar essa peça.';
+      setMessage(text);
+      showToast(text, 'error');
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function toggleFavorite(item: ClothingItem) {
     setBusy(true);
     const next = !item.is_favorite;
-    const response = await fetch(`/api/clothing/${item.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_favorite: next }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok) {
+    try {
+      const response = await fetch(`/api/clothing/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_favorite: next }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível atualizar o favorito.');
       setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, is_favorite: next } : entry));
       setFavoritePulse(item.id);
       showToast(next ? 'Peça adicionada aos favoritos' : 'Peça removida dos favoritos', 'success');
-    } else {
-      showToast(data.error || 'Não foi possível atualizar o favorito.', 'error');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível atualizar o favorito.', 'error');
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function confirmDelete() {
     if (!deleting) return;
     setBusy(true);
-    const response = await fetch(`/api/clothing/${deleting.id}`, { method: 'DELETE' });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok) {
+    try {
+      const response = await fetch(`/api/clothing/${deleting.id}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível excluir a peça.');
       setItems((current) => current.filter((item) => item.id !== deleting.id));
       setDeleting(null);
       showToast('Peça excluída', 'success');
-    } else {
-      showToast(data.error || 'Não foi possível excluir a peça.', 'error');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível excluir a peça.', 'error');
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function createCategory(event: FormEvent<HTMLFormElement>) {
@@ -179,23 +185,25 @@ export default function WardrobeClient() {
     }
     setBusy(true);
     setMessage('');
-    const response = await fetch('/api/categories', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: value }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const text = data.error || 'Não foi possível criar a categoria.';
-      setMessage(text);
-      showToast(text, 'error');
-    } else {
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: value }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível criar a categoria.');
       setCategoryModal(false);
       setCategoryName('');
       await load();
       showToast('Categoria criada', 'success');
+    } catch (error) {
+      const text = error instanceof Error ? error.message : 'Não foi possível criar a categoria.';
+      setMessage(text);
+      showToast(text, 'error');
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   return (

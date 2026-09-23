@@ -34,7 +34,7 @@ export default function OutfitBuilderClient() {
     setItems(clothing.items || []);
     const list = outfits.outfits || [];
     setSaved(list);
-    setDayLook(list.find((outfit: BuilderOutfit) => outfit.is_day_look) || null);
+    setDayLook(list.find((outfit) => outfit.is_day_look) || null);
   }
 
   useEffect(() => { void load().catch((error) => { const text = error instanceof Error ? error.message : 'Não foi possível carregar os looks.'; setMessage(text); showToast(text, 'error'); }); }, [showToast]);
@@ -42,40 +42,53 @@ export default function OutfitBuilderClient() {
   async function save(value: OutfitSaveValue, target?: BuilderOutfit) {
     setBusy(true);
     setMessage('');
-    const response = await fetch(target ? `/api/outfits/${target.id}` : '/api/outfits', { method: target ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok) {
+    try {
+      const response = await fetch(target ? `/api/outfits/${target.id}` : '/api/outfits', { method: target ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível salvar o look.');
       setCreating(false);
       setEditing(null);
       await load();
       showToast(target ? 'Look atualizado' : 'Look salvo', 'success');
-    } else {
-      setMessage(data.error || 'Não foi possível salvar o look.');
-      showToast(data.error || 'Não foi possível salvar o look.', 'error');
+    } catch (error) {
+      const text = error instanceof Error ? error.message : 'Não foi possível salvar o look.';
+      setMessage(text);
+      showToast(text, 'error');
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function deleteOutfit() {
     if (!deleting) return;
     setBusy(true);
-    const response = await fetch(`/api/outfits/${deleting.id}`, { method: 'DELETE' });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok) {
+    try {
+      const response = await fetch(`/api/outfits/${deleting.id}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível excluir o look.');
       setDeleting(null);
       await load();
       showToast('Look excluído', 'success');
-    } else showToast(data.error || 'Não foi possível excluir o look.', 'error');
-    setBusy(false);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível excluir o look.', 'error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function clearDay() {
     setBusy(true);
-    const response = await fetch('/api/outfits/day', { method: 'DELETE' });
-    const data = await response.json().catch(() => ({}));
-    if (response.ok) { await load(); showToast('Look do Dia removido', 'success'); }
-    else showToast(data.error || 'Não foi possível remover o Look do Dia.', 'error');
-    setBusy(false);
+    try {
+      const response = await fetch('/api/outfits/day', { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível remover o Look do Dia.');
+      await load();
+      showToast('Look do Dia removido', 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível remover o Look do Dia.', 'error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

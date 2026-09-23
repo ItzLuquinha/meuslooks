@@ -1,6 +1,36 @@
 "use client";
+
 import { useState } from 'react';
 import Link from 'next/link';
-export default function ForgotPasswordForm(){ const [email,setEmail]=useState('');const [done,setDone]=useState(false);const [error,setError]=useState('');
- async function submit(e:React.FormEvent){e.preventDefault();setError('');const r=await fetch('/api/auth/forgot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});if(!r.ok){setError('Não foi possível iniciar a recuperação.');return;}setDone(true);}
- return <main className="auth-page"><section className="auth-card"><div className="flower-row"><div className="lily-decoration" aria-hidden="true"><img className="lily left" src="/pink-lily.svg" alt=""/><img className="lily right" src="/pink-lily.svg" alt=""/></div></div><div className="auth-brand">Meu Look ♡</div><h1 className="section-title">Esqueci minha senha</h1>{done?<p className="page-subtitle">Se o e-mail estiver cadastrado, o fluxo de recuperação foi iniciado. Verifique sua caixa de entrada.</p>:<form className="auth-form" onSubmit={submit}><div className="field"><label className="label">E-mail</label><input className="input" type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></div>{error&&<p className="card-copy">{error}</p>}<button className="btn btn-primary">Enviar recuperação</button></form>}<div style={{marginTop:16}}><Link className="text-link" href="/login">Voltar para entrar</Link></div></section></main> }
+
+export default function ForgotPasswordForm() {
+  const [email, setEmail] = useState('');
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const response = await fetch('/api/auth/forgot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error || 'Não foi possível iniciar a recuperação.');
+        return;
+      }
+      setDone(true);
+    } catch {
+      setError('Não foi possível iniciar a recuperação. Verifique sua conexão e tente novamente.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <main className="auth-page"><section className="auth-card"><div className="flower-row"><div className="lily-decoration" aria-hidden="true"><img className="lily left" src="/pink-lily.svg" alt=""/><img className="lily right" src="/pink-lily.svg" alt=""/></div></div><div className="auth-brand">Meu Look ♡</div><h1 className="section-title">Esqueci minha senha</h1>{done ? <p className="page-subtitle">Se o e-mail estiver cadastrado, o fluxo de recuperação foi iniciado. Verifique sua caixa de entrada.</p> : <form className="auth-form" onSubmit={submit}><div className="field"><label className="label">E-mail</label><input className="input" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} required /></div>{error && <p className="card-copy" role="alert">{error}</p>}<button className="btn btn-primary" disabled={busy}>{busy ? 'Enviando…' : 'Enviar recuperação'}</button></form>}<div style={{ marginTop: 16 }}><Link className="text-link" href="/login">Voltar para entrar</Link></div></section></main>;
+}

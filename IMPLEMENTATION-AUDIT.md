@@ -16,7 +16,7 @@
 
 ## Verificações estáticas
 
-- 100 arquivos `.ts/.tsx` de aplicação foram transpilados com TypeScript sem diagnostics de sintaxe.
+- 97 arquivos `.ts/.tsx` de aplicação foram transpilados com TypeScript sem diagnostics de sintaxe.
 - Imports locais usados em `.ts/.tsx` foram verificados sem referências inexistentes.
 - Referências `fetch('/api/...')` apontaram para rotas existentes.
 - Nenhum componente cliente contém `formsubmit.co` ou destinatário de e-mail.
@@ -26,3 +26,10 @@
 ## Limitação
 
 O `npm install` não concluiu no ambiente isolado usado para a auditoria, então não foi possível executar de forma confiável `npm run typecheck`, `npm run lint` e `npm run build` completos neste ambiente. A checagem do build precisa continuar na Vercel após o push.
+
+
+## Build follow-up
+
+After the Vercel build exposed Supabase relation typing in `FavoritesClient`, the `FavoriteOutfit` type was aligned with `OutfitEditorValue`, matching the normalized `outfit_items` structure returned by the favorites API. Additional async mutation paths were hardened with `try/catch/finally` so network failures cannot leave busy/loading state stuck in the UI, including favorites, looks, calendar actions, admin wardrobe, admin target selection, and statistics loading.
+
+The project still requires a real dependency install to run the full `typecheck`, `lint`, and production build. The isolated editing environment could not complete npm dependency installation, so those commands are not claimed as passed locally.

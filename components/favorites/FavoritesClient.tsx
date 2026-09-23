@@ -5,11 +5,11 @@ import { Heart, Shirt, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
-import OutfitEditor, { type OutfitEditorItem, type OutfitSaveValue } from '@/components/outfits/OutfitEditor';
+import OutfitEditor, { type OutfitEditorItem, type OutfitEditorValue, type OutfitSaveValue } from '@/components/outfits/OutfitEditor';
 import { useToast } from '@/components/ui/ToastProvider';
 
 type FavoriteItem = { id: string; name: string; image_path: string | null; is_favorite: boolean; clothing_categories?: { id: string; name: string } | null };
-type FavoriteOutfit = OutfitSaveValue & { id: string; is_favorite: boolean };
+type FavoriteOutfit = OutfitEditorValue & { id: string; is_favorite: boolean; is_day_look: boolean };
 
 type Data = { items: FavoriteItem[]; outfits: FavoriteOutfit[] };
 
@@ -24,53 +24,66 @@ export default function FavoritesClient() {
 
   async function load() {
     setMessage('');
-    const [favoriteResponse, clothingResponse] = await Promise.all([fetch('/api/favorites', { cache: 'no-store' }), fetch('/api/clothing', { cache: 'no-store' })]);
-    const favorite = await favoriteResponse.json().catch(() => ({}));
-    const clothing = await clothingResponse.json().catch(() => ({}));
-    if (!favoriteResponse.ok) {
-      setMessage(favorite.error || 'Não foi possível carregar os favoritos.');
-      return;
+    try {
+      const [favoriteResponse, clothingResponse] = await Promise.all([fetch('/api/favorites', { cache: 'no-store' }), fetch('/api/clothing', { cache: 'no-store' })]);
+      const favorite = await favoriteResponse.json().catch(() => ({}));
+      const clothing = await clothingResponse.json().catch(() => ({}));
+      if (!favoriteResponse.ok || !clothingResponse.ok) throw new Error(favorite.error || clothing.error || 'Não foi possível carregar os favoritos.');
+      setData({ items: Array.isArray(favorite.items) ? favorite.items : [], outfits: Array.isArray(favorite.outfits) ? favorite.outfits : [] });
+      setItems(Array.isArray(clothing.items) ? clothing.items : []);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Não foi possível carregar os favoritos.');
     }
-    setData({ items: favorite.items || [], outfits: favorite.outfits || [] });
-    setItems(clothing.items || []);
   }
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [showToast]);
 
   async function toggleItem(item: FavoriteItem) {
     setBusy(true);
-    const response = await fetch(`/api/clothing/${item.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_favorite: false }) });
-    const body = await response.json().catch(() => ({}));
-    if (response.ok) {
+    try {
+      const response = await fetch(`/api/clothing/${item.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_favorite: false }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Não foi possível atualizar o favorito.');
       setData((current) => ({ ...current, items: current.items.filter((entry) => entry.id !== item.id) }));
       showToast('Favorito atualizado', 'success');
-    } else showToast(body.error || 'Não foi possível atualizar o favorito.', 'error');
-    setBusy(false);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível atualizar o favorito.', 'error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveOutfit(value: OutfitSaveValue) {
     if (!editing) return;
     setBusy(true);
-    const response = await fetch(`/api/outfits/${editing.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
-    const body = await response.json().catch(() => ({}));
-    if (response.ok) {
+    try {
+      const response = await fetch(`/api/outfits/${editing.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Não foi possível atualizar o look.');
       setEditing(null);
       await load();
       showToast('Look atualizado', 'success');
-    } else showToast(body.error || 'Não foi possível atualizar o look.', 'error');
-    setBusy(false);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível atualizar o look.', 'error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function deleteOutfit() {
     if (!deleting) return;
     setBusy(true);
-    const response = await fetch(`/api/outfits/${deleting.id}`, { method: 'DELETE' });
-    const body = await response.json().catch(() => ({}));
-    if (response.ok) {
+    try {
+      const response = await fetch(`/api/outfits/${deleting.id}`, { method: 'DELETE' });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Não foi possível excluir o look.');
       setData((current) => ({ ...current, outfits: current.outfits.filter((entry) => entry.id !== deleting.id) }));
       setDeleting(null);
       showToast('Look excluído', 'success');
-    } else showToast(body.error || 'Não foi possível excluir o look.', 'error');
-    setBusy(false);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível excluir o look.', 'error');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

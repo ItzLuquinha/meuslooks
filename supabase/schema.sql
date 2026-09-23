@@ -1,6 +1,11 @@
 create extension if not exists pgcrypto;
 
-create type public.user_role as enum ('admin','user');
+do $$
+begin
+  if not exists (select 1 from pg_type where typnamespace = 'public'::regnamespace and typname = 'user_role') then
+    create type public.user_role as enum ('admin','user');
+  end if;
+end $$;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,

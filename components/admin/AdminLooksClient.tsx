@@ -11,11 +11,89 @@ type AdminOutfit = OutfitEditorValue & { id: string; is_favorite: boolean; is_da
 type AdminUser = { id: string; name: string; email: string };
 
 export default function AdminLooksClient() {
-  const [outfits,setOutfits]=useState<AdminOutfit[]>([]); const [items,setItems]=useState<OutfitEditorItem[]>([]); const [user,setUser]=useState<AdminUser|null>(null); const [editing,setEditing]=useState<AdminOutfit|null>(null); const [deleting,setDeleting]=useState<AdminOutfit|null>(null); const [creating,setCreating]=useState(false); const [busy,setBusy]=useState(false); const [message,setMessage]=useState(''); const {showToast}=useToast();
-  async function load(){const [outfitResponse,wardrobeResponse]=await Promise.all([fetch('/api/admin/outfits',{cache:'no-store'}),fetch('/api/admin/wardrobe',{cache:'no-store'})]);const outfitData=await outfitResponse.json().catch(()=>({}));const wardrobeData=await wardrobeResponse.json().catch(()=>({}));if(outfitResponse.ok||wardrobeResponse.ok){setOutfits(outfitData.outfits||[]);setItems(wardrobeData.items||[]);setUser(wardrobeData.user||outfitData.user||null);}else{const text=wardrobeData.error||outfitData.error||'Não foi possível carregar os looks.';setMessage(text);showToast(text,'error');}}
-  useEffect(()=>{void load()},[showToast]);
-  async function save(value:OutfitSaveValue,target?:AdminOutfit){setBusy(true);const url=target?.id?`/api/admin/outfits/${target.id}`:'/api/admin/outfits';const response=await fetch(url,{method:target?.id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(value)});const data=await response.json().catch(()=>({}));if(response.ok){setCreating(false);setEditing(null);await load();showToast(target?'Look atualizado':'Look salvo','success')}else showToast(data.error||'Não foi possível salvar o look.','error');setBusy(false)}
-  async function deleteOutfit(){if(!deleting)return;setBusy(true);const response=await fetch(`/api/admin/outfits/${deleting.id}`,{method:'DELETE'});const data=await response.json().catch(()=>({}));if(response.ok){setOutfits(current=>current.filter(item=>item.id!==deleting.id));setDeleting(null);showToast('Look excluído','success')}else showToast(data.error||'Não foi possível excluir o look.','error');setBusy(false)}
-  if(!user)return <div className="empty"><Shirt className="empty-icon"/><h3 className="empty-title">Nenhuma usuária selecionada.</h3><p className="empty-copy">Escolha uma usuária no seletor acima para administrar os looks.</p></div>;
-  return <><h1 className="page-title">Looks</h1><p className="page-subtitle">Looks de {user.name}. Monte e edite composições usando somente as peças cadastradas.</p>{message&&<div className="card inline-message" role="alert">{message}</div>}<div className="section-head section"><div><h2 className="section-title">Looks salvos</h2></div><button className="btn btn-primary" onClick={()=>setCreating(true)}><Plus size={17}/>Criar look</button></div><section className="section">{outfits.length?<div className="grid">{outfits.map(outfit=><article className="card outfit-card" key={outfit.id}><div className="outfit-preview">{(outfit.outfit_items||[]).slice(0,3).map(entry=>entry.clothing_items?.image_path?<img key={entry.clothing_item_id} src={`/api/media?path=${encodeURIComponent(entry.clothing_items.image_path)}`} alt=""/>:null)}{!(outfit.outfit_items||[]).length&&<div className="outfit-placeholder"><Shirt/></div>}</div><div className="outfit-info"><div className="outfit-title">{outfit.name}</div><div className="outfit-meta">{outfit.occasion||'Sem ocasião'}{outfit.is_favorite?' · Favorito':''}</div><div className="inline-actions" style={{marginTop:10}}><button className="btn btn-soft" onClick={()=>setEditing(outfit)}><Edit3 size={15}/>Editar</button><button className="btn btn-danger" onClick={()=>setDeleting(outfit)}><Trash2 size={15}/>Excluir</button></div></div></article>)}</div>:<div className="empty"><Heart className="empty-icon"/><h3 className="empty-title">Nenhum look salvo.</h3><p className="empty-copy">Crie um usando as peças da usuária selecionada.</p></div>}</section>{creating&&<Modal title="Criar look" onClose={()=>setCreating(false)} wide><OutfitEditor initial={{name:'',occasion:'',notes:'',is_favorite:false,is_day_look:false,outfit_items:[]}} items={items} onSave={(value)=>void save(value)} onCancel={()=>setCreating(false)} saving={busy}/></Modal>}{editing&&<Modal title="Editar look" onClose={()=>setEditing(null)} wide><OutfitEditor initial={editing} items={items} onSave={(value)=>void save(value,editing)} onCancel={()=>setEditing(null)} saving={busy}/></Modal>}{deleting&&<ConfirmModal title="Excluir look?" message="A composição será removida e esta ação não poderá ser desfeita." confirmLabel="Excluir look" onConfirm={()=>void deleteOutfit()} onCancel={()=>setDeleting(null)} busy={busy}/>}</>;
+  const [outfits, setOutfits] = useState<AdminOutfit[]>([]);
+  const [items, setItems] = useState<OutfitEditorItem[]>([]);
+  const [user, setUser] = useState<AdminUser | null>(null);
+  const [editing, setEditing] = useState<AdminOutfit | null>(null);
+  const [deleting, setDeleting] = useState<AdminOutfit | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const { showToast } = useToast();
+
+  async function load() {
+    try {
+      const [outfitResponse, wardrobeResponse] = await Promise.all([
+        fetch('/api/admin/outfits', { cache: 'no-store' }),
+        fetch('/api/admin/wardrobe', { cache: 'no-store' }),
+      ]);
+      const outfitData = await outfitResponse.json().catch(() => ({}));
+      const wardrobeData = await wardrobeResponse.json().catch(() => ({}));
+      if (!outfitResponse.ok || !wardrobeResponse.ok) {
+        throw new Error(outfitData.error || wardrobeData.error || 'Não foi possível carregar os looks.');
+      }
+      setOutfits(Array.isArray(outfitData.outfits) ? outfitData.outfits : []);
+      setItems(Array.isArray(wardrobeData.items) ? wardrobeData.items : []);
+      setUser(wardrobeData.user || outfitData.user || null);
+      setMessage('');
+    } catch (error) {
+      const text = error instanceof Error ? error.message : 'Não foi possível carregar os looks.';
+      setMessage(text);
+      showToast(text, 'error');
+    }
+  }
+
+  useEffect(() => { void load(); }, [showToast]);
+
+  async function save(value: OutfitSaveValue, target?: AdminOutfit) {
+    setBusy(true);
+    try {
+      const url = target?.id ? `/api/admin/outfits/${target.id}` : '/api/admin/outfits';
+      const response = await fetch(url, {
+        method: target?.id ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(value),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível salvar o look.');
+      setCreating(false);
+      setEditing(null);
+      await load();
+      showToast(target ? 'Look atualizado' : 'Look salvo', 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível salvar o look.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteOutfit() {
+    if (!deleting) return;
+    setBusy(true);
+    try {
+      const response = await fetch(`/api/admin/outfits/${deleting.id}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Não foi possível excluir o look.');
+      setOutfits((current) => current.filter((item) => item.id !== deleting.id));
+      setDeleting(null);
+      showToast('Look excluído', 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Não foi possível excluir o look.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!user) return <div className="empty"><Shirt className="empty-icon"/><h3 className="empty-title">Nenhuma usuária selecionada.</h3><p className="empty-copy">Escolha uma usuária no seletor acima para administrar os looks.</p></div>;
+
+  return <>
+    <h1 className="page-title">Looks</h1>
+    <p className="page-subtitle">Looks de {user.name}. Monte e edite composições usando somente as peças cadastradas.</p>
+    {message && <div className="card inline-message" role="alert">{message}</div>}
+    <div className="section-head section"><div><h2 className="section-title">Looks salvos</h2></div><button type="button" className="btn btn-primary" onClick={() => setCreating(true)}><Plus size={17}/>Criar look</button></div>
+    <section className="section">{outfits.length ? <div className="grid">{outfits.map((outfit) => <article className="card outfit-card" key={outfit.id}><div className="outfit-preview">{(outfit.outfit_items || []).slice(0, 3).map((entry) => entry.clothing_items?.image_path ? <img key={entry.clothing_item_id} src={`/api/media?path=${encodeURIComponent(entry.clothing_items.image_path)}`} alt="" loading="lazy" decoding="async"/> : null)}{!(outfit.outfit_items || []).length && <div className="outfit-placeholder"><Shirt/></div>}</div><div className="outfit-info"><div className="outfit-title">{outfit.name}</div><div className="outfit-meta">{outfit.occasion || 'Sem ocasião'}{outfit.is_favorite ? ' · Favorito' : ''}</div><div className="inline-actions" style={{ marginTop: 10 }}><button type="button" className="btn btn-soft" onClick={() => setEditing(outfit)}><Edit3 size={15}/>Editar</button><button type="button" className="btn btn-danger" onClick={() => setDeleting(outfit)}><Trash2 size={15}/>Excluir</button></div></div></article>)}</div> : <div className="empty"><Heart className="empty-icon"/><h3 className="empty-title">Nenhum look salvo.</h3><p className="empty-copy">Crie um usando as peças da usuária selecionada.</p></div>}</section>
+    {creating && <Modal title="Criar look" onClose={() => setCreating(false)} wide><OutfitEditor initial={{ name: '', occasion: '', notes: '', is_favorite: false, is_day_look: false, outfit_items: [] }} items={items} onSave={(value) => void save(value)} onCancel={() => setCreating(false)} saving={busy}/></Modal>}
+    {editing && <Modal title="Editar look" onClose={() => setEditing(null)} wide><OutfitEditor initial={editing} items={items} onSave={(value) => void save(value, editing)} onCancel={() => setEditing(null)} saving={busy}/></Modal>}
+    {deleting && <ConfirmModal title="Excluir look?" message="A composição será removida e esta ação não poderá ser desfeita." confirmLabel="Excluir look" onConfirm={() => void deleteOutfit()} onCancel={() => setDeleting(null)} busy={busy}/>} 
+  </>;
 }

@@ -2,10 +2,26 @@ import { NextResponse } from 'next/server';
 import { getCurrentContext } from '@/lib/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-type RawItem = { id: string; name: string; image_path: string | null; clothing_categories: Array<{ name: string }> | null };
+type RawItem = { id: string; name: string; image_path: string | null; clothing_categories: Array<{ id?: string; name: string }> | null };
 type UsageRow = { clothing_item_id: string; worn_on?: string };
+type RawOutfitItem = { clothing_item_id: string; clothing_items: RawItem[] | null };
+type RawOutfit = { id: string; user_id: string; name: string; occasion: string | null; notes: string | null; is_favorite: boolean; is_day_look: boolean; created_at: string; outfit_items: RawOutfitItem[] | null };
 
 function categoryName(value: RawItem['clothing_categories']) { return value?.[0]?.name || 'Sem categoria'; }
+function normalizeOutfit(outfit: RawOutfit) {
+  return {
+    ...outfit,
+    outfit_items: (outfit.outfit_items || []).map((entry) => ({
+      ...entry,
+      clothing_items: entry.clothing_items?.[0] ? { ...entry.clothing_items[0], clothing_categories: entry.clothing_items[0].clothing_categories?.[0] ?? null } : null,
+    })),
+  };
+}
+function normalizeOutfitValue(value: RawOutfit | RawOutfit[] | null) {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ? normalizeOutfit(value[0]) : null) : normalizeOutfit(value);
+}
+function normalizeOutfitList(value: RawOutfit[] | null) { return (value || []).map(normalizeOutfit); }
 
 export async function GET() {
   const context = await getCurrentContext();
@@ -56,8 +72,8 @@ export async function GET() {
   return NextResponse.json({
     profile,
     message: message || null,
-    dayLook: dayLook || null,
-    saved: saved || [],
+    dayLook: normalizeOutfitValue((dayLook as RawOutfit | null) || null),
+    saved: normalizeOutfitList((saved || []) as RawOutfit[]),
     summary: { clothing: clothingCount || 0, outfits: outfitCount || 0, favorites: (favoriteClothing || 0) + (favoriteOutfits || 0), never_used: waitingAll.length },
     recentUsed,
     waiting,

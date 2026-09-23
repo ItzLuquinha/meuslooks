@@ -2,9 +2,17 @@ import { NextResponse } from 'next/server';
 import { getSelectedAdminUser, requireAdminSession } from '@/lib/admin';
 import { createAdminClient } from '@/lib/supabase/admin';
 
+type RawCategory = { id: string; name: string };
+type RawItem = { id: string; name: string; image_path: string | null; category_id: string | null; clothing_categories: RawCategory[] | null };
+type RawOutfitItem = { clothing_item_id: string; clothing_items: RawItem[] | null };
+type RawOutfit = { id: string; name: string; occasion: string | null; notes: string | null; is_favorite: boolean; is_day_look: boolean; created_at: string; outfit_items: RawOutfitItem[] | null };
+
 function uniqueIds(value: unknown) {
   if (!Array.isArray(value)) return [] as string[];
   return [...new Set(value.map((id) => String(id)).filter(Boolean))].slice(0, 12);
+}
+function normalizeOutfit(outfit: RawOutfit) {
+  return { ...outfit, outfit_items: (outfit.outfit_items || []).map((entry) => ({ ...entry, clothing_items: entry.clothing_items?.[0] ? { ...entry.clothing_items[0], clothing_categories: entry.clothing_items[0].clothing_categories?.[0] ?? null } : null })) };
 }
 
 export async function GET() {
@@ -18,7 +26,7 @@ export async function GET() {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ outfits: data || [], user });
+  return NextResponse.json({ outfits: ((data || []) as RawOutfit[]).map(normalizeOutfit), user });
 }
 
 export async function POST(req: Request) {

@@ -9,7 +9,8 @@ function isValidDate(value: string) {
   const date = new Date(`${value}T12:00:00Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
-type CalendarItem = { clothing_item_id: string };
+type CalendarItem = { clothing_item_id: string; clothing_items?: { id: string; name: string; image_path: string | null } | null };
+type RawCalendarItem = { clothing_item_id: string; clothing_items: Array<{ id: string; name: string; image_path: string | null }> | null };
 
 type CalendarOutfit = {
   id: string;
@@ -17,6 +18,18 @@ type CalendarOutfit = {
   occasion: string | null;
   outfit_items: CalendarItem[] | null;
 };
+type RawCalendarOutfit = {
+  id: string;
+  name: string;
+  occasion: string | null;
+  outfit_items: RawCalendarItem[] | null;
+};
+type RawCalendarEntry = { id: string; outfit_id: string; worn_on: string; note: string | null; outfits: RawCalendarOutfit[] | null };
+
+function normalizeCalendarOutfit(value: RawCalendarOutfit | null) {
+  if (!value) return null;
+  return { ...value, outfit_items: (value.outfit_items || []).map((entry) => ({ ...entry, clothing_items: entry.clothing_items?.[0] || null })) };
+}
 
 async function userContext() {
   const context = await getCurrentContext();
@@ -44,7 +57,8 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   const { data, error } = await admin.from('outfit_wears').select('id,outfit_id,worn_on,note,outfits(id,name,occasion,outfit_items(clothing_item_id,clothing_items(id,name,image_path)))').eq('user_id', context.userId).gte('worn_on', start).lte('worn_on', end).order('worn_on', { ascending: true });
   if (error) return NextResponse.json({ error: 'Não foi possível carregar o calendário.' }, { status: 500 });
-  return NextResponse.json({ entries: data || [] });
+  const entries = ((data || []) as RawCalendarEntry[]).map((entry) => ({ ...entry, outfits: entry.outfits?.[0] ? normalizeCalendarOutfit(entry.outfits[0]) : null }));
+  return NextResponse.json({ entries });
 }
 
 export async function POST(request: Request) {
