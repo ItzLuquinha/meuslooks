@@ -156,7 +156,7 @@ export default function DebugProbe() {
         });
       };
 
-      const scheduleRoute = (url: string | URL | null) => {
+      const scheduleRoute = (url: string | URL | null | undefined) => {
         try {
           const next = new URL(String(url), window.location.href);
           if (next.origin !== window.location.origin || next.pathname === window.location.pathname) return;
