@@ -35,6 +35,7 @@ export default function WardrobeClient() {
   const [categoryName, setCategoryName] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [favoritePulse, setFavoritePulse] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
@@ -139,6 +140,7 @@ export default function WardrobeClient() {
     const data = await response.json().catch(() => ({}));
     if (response.ok) {
       setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, is_favorite: next } : entry));
+      setFavoritePulse(item.id);
       showToast(next ? 'Peça adicionada aos favoritos' : 'Peça removida dos favoritos', 'success');
     } else {
       showToast(data.error || 'Não foi possível atualizar o favorito.', 'error');
@@ -217,7 +219,7 @@ export default function WardrobeClient() {
           <div className="grid">
             {filtered.map((item) => (
               <article key={item.id} className="card clothing-card">
-                <button aria-label={item.is_favorite ? 'Desfavoritar' : 'Favoritar'} className="favorite-btn" onClick={() => void toggleFavorite(item)} disabled={busy}>
+                <button aria-label={item.is_favorite ? 'Desfavoritar' : 'Favoritar'} className={`favorite-btn${favoritePulse === item.id ? ' favorite-btn-pulse' : ''}`} onClick={() => void toggleFavorite(item)} onAnimationEnd={() => setFavoritePulse((current) => current === item.id ? null : current)} disabled={busy}>
                   <Heart size={17} fill={item.is_favorite ? 'currentColor' : 'none'} />
                 </button>
                 <div className="clothing-image">
